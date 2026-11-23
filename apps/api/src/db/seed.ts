@@ -12,11 +12,12 @@ const emails = ['buyer@demo.test', 'seller@demo.test', 'broker@demo.test', 'sell
 
 await db.delete(schema.users).where(inArray(schema.users.email, emails));
 const passwordHash = await hashPassword(DEMO_PASSWORD);
+const emailVerifiedAt = new Date(); // demo accounts skip the emailed code
 const [buyer, seller, broker, seller2] = await db
   .insert(schema.users)
   .values([
-    { email: emails[0]!, name: 'Asha Sharma', role: 'buyer', phone: '+919800000001', passwordHash },
-    { email: emails[1]!, name: 'Ramesh Kumar', role: 'seller', phone: '+919800000002', passwordHash, verified: true },
+    { email: emails[0]!, name: 'Asha Sharma', role: 'buyer', phone: '+919800000001', passwordHash, emailVerifiedAt },
+    { email: emails[1]!, name: 'Ramesh Kumar', role: 'seller', phone: '+919800000002', passwordHash, emailVerifiedAt, verified: true },
     {
       email: emails[2]!,
       name: 'Priya Brokers',
@@ -24,9 +25,10 @@ const [buyer, seller, broker, seller2] = await db
       phone: '+919800000003',
       reraId: 'PRM/KA/RERA/1251/309',
       passwordHash,
+      emailVerifiedAt,
       verified: true,
     },
-    { email: emails[3]!, name: 'Suresh Reddy', role: 'seller', phone: '+919800000004', passwordHash },
+    { email: emails[3]!, name: 'Suresh Reddy', role: 'seller', phone: '+919800000004', passwordHash, emailVerifiedAt },
   ])
   .returning();
 

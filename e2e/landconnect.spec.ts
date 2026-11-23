@@ -13,6 +13,18 @@ const buyer = { name: `Meera Buyer ${run}`, email: `buyer.${run}@e2e.test` };
 const title = `E2E mango farm ${run}`;
 const PHOTO = path.join(__dirname, '../apps/mobile/assets/images/icon.png');
 
+/** Newest 6-digit code mailed to this address, read from the local Mailpit inbox (docker compose `mail`). */
+async function mailedCode(to: string, subject: RegExp) {
+  const url = `${process.env.MAILPIT_URL ?? 'http://localhost:8025'}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`;
+  for (let i = 0; i < 30; i++) {
+    const { messages } = (await (await fetch(url)).json()) as { messages: { Subject: string }[] };
+    const hit = messages.find((m) => subject.test(m.Subject));
+    if (hit) return hit.Subject.match(/\d{6}/)![0];
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`No email to ${to} matching ${subject}`);
+}
+
 /** Expo's dev-server error toast is an overlay outside the app; keep it from covering real buttons. */
 const HIDE_DEV_OVERLAY = '#error-toast { display: none !important; }';
 
@@ -33,7 +45,16 @@ async function newUser(browser: Browser, who: { name: string; email: string }, r
   await page.getByLabel('Email').fill(who.email);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByLabel('Search listings')).toBeVisible();
+  // Sign-up mails a code and asks for it. Sellers enter it; buyers skip and get a reminder banner instead.
+  await expect(page.getByText('Check your email')).toBeVisible();
+  if (role === 'Seller') {
+    await page.getByLabel('Verification code').fill(await mailedCode(who.email, /is your LandConnect code/));
+    await expect(page.getByLabel('Search listings')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Verify your email' })).toHaveCount(0);
+  } else {
+    await page.getByRole('button', { name: 'Back' }).click();
+    await expect(page.getByRole('button', { name: 'Verify your email' })).toBeVisible();
+  }
   return page;
 }
 
@@ -166,4 +187,18 @@ test('owner edits the listing and marks it sold; it leaves the buyer feed', asyn
   await b.getByRole('button', { name: 'Saved', exact: true }).click();
   await expect(b.getByRole('button', { name: new RegExp(`^${title} \\(price reduced\\)`) })).toBeVisible();
   await visible(b, 'Sold');
+});
+
+test('forgot password: emailed code sets a new password and signs in', async () => {
+  await s.goto('/profile');
+  await s.getByRole('button', { name: 'Sign out' }).click();
+  await s.goto('/sign-in');
+  await s.getByText('Forgot password?').click();
+  await visible(s, /send a 6-digit code to reset it/);
+  await s.getByLabel('Email').last().fill(seller.email);
+  await s.getByRole('button', { name: 'Send code' }).click();
+  await s.getByLabel('Verification code').fill(await mailedCode(seller.email, /resets your LandConnect password/));
+  await s.getByRole('textbox', { name: 'New password' }).fill('a-new-password-1');
+  await s.getByRole('button', { name: 'Reset password' }).click();
+  await expect(s.getByLabel('Search listings')).toBeVisible();
 });

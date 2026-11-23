@@ -4,12 +4,14 @@ import { FlashList } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import {
+  ChevronRight,
   Factory,
   Heart,
   House,
   LandPlot,
   LayoutGrid,
   type LucideIcon,
+  MailCheck,
   Map as MapIcon,
   Plus,
   Search,
@@ -134,15 +136,34 @@ export default function Explore() {
           </View>
         )}
         ListHeaderComponent={
-          items.length ? (
-            <Text variant="small" color="muted" style={{ paddingHorizontal: gutter, paddingTop: 16, paddingBottom: 14 }}>
-              {items.length}
-              {q.hasNextPage ? '+' : ''} {items.length === 1 ? 'plot' : 'plots'}
-              {filters.saved ? ' saved' : ''} · owners' numbers stay private
-            </Text>
-          ) : (
-            <View style={{ height: 16 }} />
-          )
+          <>
+            {user.emailVerified ? null : (
+              <Pressable
+                onPress={() => router.push('/verify-email')}
+                accessibilityRole="button"
+                accessibilityLabel="Verify your email"
+                style={({ pressed }) => [s.banner, pressed && { opacity: 0.85 }]}
+              >
+                <MailCheck size={22} color={c.accent} />
+                <View style={{ flex: 1, gap: 1 }}>
+                  <Text variant="smallMedium">Verify your email</Text>
+                  <Text variant="small" color="muted">
+                    So you can reset your password if you forget it.
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={c.muted} />
+              </Pressable>
+            )}
+            {items.length ? (
+              <Text variant="small" color="muted" style={{ paddingHorizontal: gutter, paddingTop: 16, paddingBottom: 14 }}>
+                {items.length}
+                {q.hasNextPage ? '+' : ''} {items.length === 1 ? 'plot' : 'plots'}
+                {filters.saved ? ' saved' : ''} · owners' numbers stay private
+              </Text>
+            ) : (
+              <View style={{ height: 16 }} />
+            )}
+          </>
         }
         ListEmptyComponent={
           q.isPending ? (
@@ -239,6 +260,16 @@ const useStyles = makeStyles(({ c, dark }) => ({
   cats: { paddingHorizontal: gutter, gap: 26, paddingTop: 14 },
   cat: { alignItems: 'center', gap: 6, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: 'transparent', minWidth: 48 },
   catOn: { borderBottomColor: c.ink },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: gutter,
+    marginTop: 16,
+    padding: 14,
+    borderRadius: radius.md,
+    backgroundColor: c.accentSoft,
+  },
   mapPill: {
     position: 'absolute',
     bottom: 18,

@@ -2,6 +2,7 @@ import type {
   AuthResponse,
   CallLogEntry,
   Conversation,
+  ForgotPasswordInput,
   LandType,
   Listing,
   ListingInput,
@@ -10,6 +11,7 @@ import type {
   Message,
   Page,
   PublicUser,
+  ResetPasswordInput,
   SignUpInput,
 } from '@landconnect/shared';
 import { type InfiniteData, QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -56,9 +58,29 @@ export function useSignIn() {
 export function useSignUp() {
   return useMutation({
     mutationFn: (b: SignUpInput) => api.public<AuthResponse>('/auth/signup', b),
+    onSuccess: async (r) => {
+      useSession.setState({ askForEmailCode: true });
+      await useSession.getState().set(r);
+    },
+  });
+}
+// ── Email codes ──────────────────────────────────────────────────────────
+export const useSendEmailCode = () => useMutation({ mutationFn: () => api.post<void>('/auth/email/code') });
+export function useVerifyEmail() {
+  return useMutation({
+    mutationFn: (code: string) => api.post<Me>('/auth/email/verify', { code }),
+    onSuccess: (u) => useSession.getState().setUser(u),
+  });
+}
+export const useForgotPassword = () =>
+  useMutation({ mutationFn: (b: ForgotPasswordInput) => api.public<void>('/auth/password/forgot', b) });
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (b: ResetPasswordInput) => api.public<AuthResponse>('/auth/password/reset', b),
     onSuccess: (r) => useSession.getState().set(r),
   });
 }
+
 export function useUpdateMe() {
   return useMutation({
     mutationFn: (b: Partial<Pick<Me, 'callPolicy' | 'showApproxLocation' | 'name'>> & { pushToken?: string | null }) =>

@@ -4,6 +4,7 @@ import { io as connect, type Socket } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.ts';
 import { sql } from '../src/db/client.ts';
+import { outbox } from '../src/email-codes.ts';
 
 type Client = Socket<ServerToClient, ClientToServer>;
 let app: FastifyInstance;
@@ -101,6 +102,59 @@ describe('auth', () => {
     });
     expect(r.status).toBe(400);
     expect(Object.keys(r.body.fields).length).toBeGreaterThan(0);
+  });
+});
+
+/** The 6-digit code from the newest email to this address (tests read the outbox instead of a mailbox). */
+const codeFor = (email: string) => outbox.findLast((m) => m.to === email)!.subject.match(/\d{6}/)![0];
+const wrongFor = (code: string) => (code === '000000' ? '111111' : '000000');
+
+describe('email codes', () => {
+  it('sign-up emails a code; a wrong code counts down, the right one verifies once', async () => {
+    const u = await user('buyer');
+    expect(u.user.emailVerified).toBe(false);
+    const code = codeFor(u.user.email);
+    const wrong = await api<{ error: string }>('POST', '/auth/email/verify', u.accessToken, { code: wrongFor(code) });
+    expect(wrong).toEqual({ status: 400, body: { error: 'Wrong code. 4 tries left.' } });
+    const ok = await api<{ emailVerified: boolean }>('POST', '/auth/email/verify', u.accessToken, { code });
+    expect(ok.status).toBe(200);
+    expect(ok.body.emailVerified).toBe(true);
+    expect((await api('POST', '/auth/email/verify', u.accessToken, { code })).status).toBe(400); // used up
+    expect((await api('POST', '/auth/email/code', u.accessToken)).status).toBe(409); // already verified
+  });
+
+  it('locks a code after 5 wrong tries and rate-limits resends', async () => {
+    const u = await user('seller');
+    const code = codeFor(u.user.email);
+    expect((await api('POST', '/auth/email/code', u.accessToken)).status).toBe(429); // sign-up just sent one
+    let last: { status: number; body: { error: string } } | undefined;
+    for (let i = 0; i < 5; i++) last = await api('POST', '/auth/email/verify', u.accessToken, { code: wrongFor(code) });
+    expect(last!.body.error).toBe('Too many wrong tries. Ask for a new code.');
+    const late = await api<{ error: string }>('POST', '/auth/email/verify', u.accessToken, { code });
+    expect(late.body.error).toBe('This code has expired. Ask for a new one.');
+  });
+
+  it('resets a forgotten password, signs out old sessions, and never reveals who has an account', async () => {
+    const before = outbox.length;
+    expect((await api('POST', '/auth/password/forgot', undefined, { email: 'nobody@t.test' })).status).toBe(204);
+    expect(outbox.length).toBe(before);
+
+    const u = await user('broker');
+    expect((await api('POST', '/auth/password/forgot', undefined, { email: u.user.email })).status).toBe(204);
+    expect(outbox.at(-1)!.subject).toMatch(/resets your LandConnect password/);
+    const code = codeFor(u.user.email);
+    const reset = await api<AuthResponse>('POST', '/auth/password/reset', undefined, {
+      email: u.user.email,
+      code,
+      password: 'brand-new-pass',
+    });
+    expect(reset.status).toBe(200);
+    expect(reset.body.user.emailVerified).toBe(true);
+    expect((await api('POST', '/auth/refresh', undefined, { refreshToken: u.refreshToken })).status).toBe(401);
+    expect((await api('POST', '/auth/login', undefined, { email: u.user.email, password: 'password123' })).status).toBe(401);
+    expect((await api('POST', '/auth/login', undefined, { email: u.user.email, password: 'brand-new-pass' })).status).toBe(200);
+    const again = await api('POST', '/auth/password/reset', undefined, { email: u.user.email, code, password: 'another-pass-1' });
+    expect(again.status).toBe(400);
   });
 });
 

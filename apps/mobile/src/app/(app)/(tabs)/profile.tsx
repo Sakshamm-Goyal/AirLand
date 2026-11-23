@@ -48,6 +48,18 @@ export default function Profile() {
           <Text variant="small" color="muted">
             {user.email}
           </Text>
+          {user.emailVerified ? null : (
+            <Pressable
+              onPress={() => router.push('/verify-email')}
+              accessibilityRole="button"
+              hitSlop={10}
+              style={{ minHeight: 44, justifyContent: 'center' }}
+            >
+              <Text variant="smallMedium" color="accent">
+                Email not verified · Verify now
+              </Text>
+            </Pressable>
+          )}
         </View>
         {user.role === 'broker' && user.reraId ? (
           <View style={s.note}>

@@ -14,6 +14,9 @@ const env = z
     LIVEKIT_API_KEY: z.string().default('devkey'),
     LIVEKIT_API_SECRET: z.string().default('secret'),
     RING_TIMEOUT_MS: z.coerce.number().default(30_000),
+    /** e.g. smtps://user:pass@smtp-relay.brevo.com:465. Unset in development = local Mailpit on :1025. */
+    SMTP_URL: z.string().optional(),
+    MAIL_FROM: z.string().default('LandConnect <no-reply@landconnect.app>'),
   })
   .parse(process.env);
 

@@ -1,4 +1,4 @@
-# Local dev: Postgres + LiveKit in dev mode (API key "devkey", secret "secret").
+# Local dev: Postgres + LiveKit in dev mode (API key "devkey", secret "secret") + Mailpit (catches all email, UI on :8025).
 services:
   db:
     image: postgres:16-alpine
@@ -9,5 +9,8 @@ services:
     image: livekit/livekit-server:latest
     command: --dev --bind 0.0.0.0
     ports: ["7880:7880", "7881:7881", "7882:7882/udp"]
+  mail:
+    image: axllent/mailpit:v1.33
+    ports: ["1025:1025", "8025:8025"]
 volumes:
   pgdata:

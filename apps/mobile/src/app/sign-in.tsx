@@ -73,6 +73,16 @@ export default function SignIn() {
           />
         )}
       />
+      <Pressable
+        onPress={() => router.push('/forgot-password')}
+        accessibilityRole="link"
+        hitSlop={10}
+        style={{ alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', marginTop: -6 }}
+      >
+        <Text variant="bodyMedium" style={{ textDecorationLine: 'underline' }}>
+          Forgot password?
+        </Text>
+      </Pressable>
       <View style={{ gap: 10, marginTop: 8 }}>
         <Text variant="label" color="muted">
           Try a demo account

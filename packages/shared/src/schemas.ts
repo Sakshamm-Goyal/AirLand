@@ -44,6 +44,17 @@ export type LoginInput = z.infer<typeof loginSchema>;
 
 export const refreshSchema = z.object({ refreshToken: z.string().min(20).max(200) });
 
+/** One-time codes sent by email: verify the address, reset a forgotten password. */
+const code = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, 'Enter the 6-digit code');
+export const verifyEmailSchema = z.object({ code });
+export const forgotPasswordSchema = z.object({ email });
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export const resetPasswordSchema = z.object({ email, code, password });
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
 // ── Users ────────────────────────────────────────────────────────────────
 /** What other people may see about a user. Never contains phone or email. */
 export interface PublicUser {
@@ -56,6 +67,8 @@ export interface PublicUser {
 
 export interface Me extends PublicUser {
   email: string;
+  /** Proved they own the address with an emailed code. */
+  emailVerified: boolean;
   phone: string | null;
   reraId: string | null;
   callPolicy: CallPolicy;

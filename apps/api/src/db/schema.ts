@@ -13,6 +13,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -40,6 +41,7 @@ export const users = pgTable('users', {
   reraId: text('rera_id'),
   avatarUrl: text('avatar_url'),
   verified: boolean('verified').notNull().default(false),
+  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true, precision: 3 }),
   callPolicy: callPolicyEnum('call_policy').notNull().default('anyone_in_chat'),
   showApproxLocation: boolean('show_approx_location').notNull().default(true),
   pushToken: text('push_token'),
@@ -62,6 +64,26 @@ export const refreshTokens = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('refresh_tokens_family_idx').on(t.family)],
+);
+
+export const codePurposeEnum = pgEnum('code_purpose', ['verify_email', 'reset_password']);
+
+/** At most one live emailed code per user and purpose; a new request replaces it. */
+export const emailCodes = pgTable(
+  'email_codes',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    purpose: codePurposeEnum('purpose').notNull(),
+    /** HMAC of the 6-digit code; the code itself is never stored. */
+    codeHash: text('code_hash').notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    expiresAt: timestamp('expires_at', { withTimezone: true, precision: 3 }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('email_codes_user_purpose_idx').on(t.userId, t.purpose)],
 );
 
 export const listings = pgTable(

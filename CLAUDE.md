@@ -15,7 +15,7 @@ docs/           PLAN (timeline), ARCHITECTURE (design), DECISIONS (research), UX
 
 ```bash
 pnpm install                     # root; node-linker=hoisted (RN needs flat node_modules)
-pnpm db:up                       # docker compose: Postgres :5433 + LiveKit dev server :7880 (key devkey / secret)
+pnpm db:up                       # docker compose: Postgres :5433 + LiveKit :7880 (devkey / secret) + Mailpit :1025, inbox http://localhost:8025
 pnpm --filter api db:migrate     # apply drizzle/*.sql
 pnpm --filter api db:seed        # demo users buyer|seller|broker@demo.test, password in src/db/seed.ts
 pnpm dev:api                     # http://localhost:4000 · /health · /openapi.json
@@ -87,6 +87,7 @@ The product owner asked for an Airbnb feel after trying "earthy premium" and "lu
 - Drizzle query builder; raw `` sql`…` `` only for things the builder can't express (row comparisons, `distinct on`). Avoid N+1: list endpoints use set-based queries (see `listConversations`, 5 queries total).
 - Cursor pagination (`created_at, id`), never offset. Timestamps are `timestamptz(3)` so JS `Date` round-trips exactly.
 - Secrets only via env (`src/config.ts` validates at boot; prod refuses the dev JWT secret). Passwords argon2id (OWASP params). Access JWT 15 min; refresh token opaque, hashed, rotated, family-revoked on reuse.
+- Email codes (`src/email-codes.ts`): 6 digits, HMAC-stored, 10 min, 5 tries, 30 s resend cooldown, all enforced in SQL. Unverified users can use the app (banner nags); forgot-password never reveals whether an email exists. Tests read codes from `outbox`, not SMTP.
 - Rate limits: global 300/min/IP, credential routes 10/min/IP.
 - Every bug fix comes with a test that fails without it. Integration tests hit a real Postgres + real Socket.IO (see `apps/api/test/api.test.ts`); no DB mocks.
 

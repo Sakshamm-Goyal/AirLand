@@ -9,6 +9,8 @@ interface SessionState {
   user: Me | null;
   accessToken: string | null;
   refreshToken: string | null;
+  /** Set by sign-up: the app opens the "enter your code" screen once, on top of Explore. */
+  askForEmailCode: boolean;
   set: (r: AuthResponse) => Promise<void>;
   setUser: (u: Me) => void;
   clear: () => Promise<void>;
@@ -20,6 +22,7 @@ export const useSession = create<SessionState>((set) => ({
   user: null,
   accessToken: null,
   refreshToken: null,
+  askForEmailCode: false,
   set: async (r) => {
     await SecureStore.setItemAsync(KEY, r.refreshToken);
     set({ status: 'signedIn', user: r.user, accessToken: r.accessToken, refreshToken: r.refreshToken });

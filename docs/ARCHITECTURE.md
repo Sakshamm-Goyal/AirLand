@@ -253,6 +253,10 @@ All routes are JSON. 🔒 = needs `Authorization: Bearer <access>`. Role column 
 | POST | `/auth/login` | public | Rate-limited (5/min/IP) |
 | POST | `/auth/refresh` | public | Rotates: old token revoked, new one issued. Reuse of a revoked token revokes the whole family. |
 | POST | `/auth/logout` | 🔒 any | Revokes the refresh token |
+| POST | `/auth/email/code` | 🔒 any | Emails a 6-digit code to verify the address (sign-up already sends one). One per 30 s, else 429 |
+| POST | `/auth/email/verify` | 🔒 any | `{code}` → `Me` with `emailVerified: true`. 5 wrong tries kill the code; codes live 10 min |
+| POST | `/auth/password/forgot` | public | `{email}` → always 204, so it can't be used to find out who has an account |
+| POST | `/auth/password/reset` | public | `{email, code, password}` → `{user, accessToken, refreshToken}`; signs out every other device |
 | GET / PATCH | `/me` | 🔒 any | Privacy settings, push token, avatar |
 | GET | `/listings` | public | `?type&q&minPrice&maxPrice&bbox=minLng,minLat,maxLng,maxLat&cursor` |
 | GET | `/listings/:id` | public | Coordinates rounded to 2 dp (≈1.1 km) if `approx_location` and the caller isn't owner/enquirer |

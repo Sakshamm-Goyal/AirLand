@@ -20,6 +20,7 @@ export const toPublicUser = (u: Pick<UserRow, 'id' | 'name' | 'role' | 'avatarUr
 export const toMe = (u: UserRow): Me => ({
   ...toPublicUser(u),
   email: u.email,
+  emailVerified: u.emailVerifiedAt !== null,
   phone: u.phone,
   reraId: u.reraId,
   callPolicy: u.callPolicy,
