@@ -11,6 +11,8 @@
       "!docs/mockup",
       "!apps/mobile/scripts",
       "!**/dist",
+      "!**/test-results",
+      "!**/playwright-report",
       "!**/*.md"
     ]
   },
@@ -46,7 +48,7 @@
   },
   "overrides": [
     {
-      "includes": ["apps/mobile/src/app/(app)/(tabs)/_layout.tsx"],
+      "includes": ["apps/mobile/src/app/(app)/(tabs)/_layout.tsx", "apps/mobile/src/app/(app)/(tabs)/_layout.web.tsx"],
       "linter": {
         "rules": {
           "correctness": {

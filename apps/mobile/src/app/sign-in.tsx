@@ -36,6 +36,7 @@ export default function SignIn() {
         render={({ field }) => (
           <Field
             label="Email"
+            placeholder="you@example.com"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -54,6 +55,7 @@ export default function SignIn() {
         render={({ field }) => (
           <Field
             label="Password"
+            placeholder="At least 8 characters"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}

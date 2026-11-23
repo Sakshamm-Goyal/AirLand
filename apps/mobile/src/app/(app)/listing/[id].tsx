@@ -1,4 +1,4 @@
-import { formatArea, formatInr, groupInr, type Listing, toSqft } from '@landconnect/shared';
+import { formatArea, formatInr, formatPerUnit, groupInr, type Listing, toSqft } from '@landconnect/shared';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -58,7 +58,8 @@ function Detail({ l }: { l: Listing }) {
   const s = useStyles();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const heroH = Math.round(Math.min(width * 0.95, height * 0.5));
   const [page, setPage] = useState(0);
   const save = useToggleSave(l);
   const start = useStartConversation();
@@ -86,7 +87,12 @@ function Detail({ l }: { l: Listing }) {
       value: `${formatArea(l.area, l.areaUnit)}`,
       sub: l.areaUnit === 'sqft' ? null : `${groupInr(toSqft(l.area, l.areaUnit))} sq ft`,
     },
-    { icon: Landmark, label: 'Land type', value: LAND_TYPE_LABEL[l.landType], sub: l.zoning },
+    {
+      icon: Landmark,
+      label: 'Land type',
+      value: LAND_TYPE_LABEL[l.landType],
+      sub: l.zoning && l.zoning.toLowerCase() !== l.landType ? l.zoning : null,
+    },
     { icon: Waypoints, label: 'Road access', value: l.roadAccessFt != null ? `${l.roadAccessFt} ft road` : 'Not stated', sub: null },
     {
       icon: Droplets,
@@ -105,13 +111,14 @@ function Detail({ l }: { l: Listing }) {
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
+            onScroll={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
+            scrollEventThrottle={32}
           >
             {l.images.map((uri) => (
               <Image
                 key={uri}
                 source={uri}
-                style={{ width, height: width * 1.05, backgroundColor: c.skeleton }}
+                style={{ width, height: heroH, backgroundColor: c.skeleton }}
                 contentFit="cover"
                 transition={250}
                 accessibilityIgnoresInvertColors
@@ -130,11 +137,13 @@ function Detail({ l }: { l: Listing }) {
               />
             ) : null}
           </View>
-          <View style={s.counter}>
-            <Text variant="micro" style={{ color: '#fff' }}>
-              {page + 1} / {l.images.length}
-            </Text>
-          </View>
+          {l.images.length > 1 ? (
+            <View style={s.dots} accessibilityLabel={`Photo ${page + 1} of ${l.images.length}`}>
+              {l.images.map((uri, i) => (
+                <View key={uri} style={[s.dot, i === page && s.dotOn]} />
+              ))}
+            </View>
+          ) : null}
         </View>
 
         <View style={s.sheet}>
@@ -276,9 +285,17 @@ function Detail({ l }: { l: Listing }) {
           </>
         ) : (
           <>
-            <Button title="Chat" icon={MessageCircle} kind="secondary" style={{ flex: 1 }} loading={start.isPending} onPress={openChat} />
-            <Button title="Call" icon={Phone} style={{ flex: 1 }} disabled={start.isPending} onPress={() => call('audio')} />
-            <IconButton icon={Video} label="Video call" variant="ink" size={54} onPress={() => call('video')} />
+            <View style={{ flex: 1 }}>
+              <Text variant="h1" numberOfLines={1} style={{ fontVariant: ['tabular-nums'] }}>
+                {formatInr(l.priceInr)}
+              </Text>
+              <Text variant="micro" color="accent" numberOfLines={1}>
+                {formatPerUnit(l.priceInr, l.area, l.areaUnit)}
+              </Text>
+            </View>
+            <IconButton icon={MessageCircle} label="Chat" size={50} onPress={openChat} />
+            <IconButton icon={Video} label="Video call" size={50} onPress={() => call('video')} />
+            <Button title="Call" icon={Phone} disabled={start.isPending} onPress={() => call('audio')} style={{ height: 50 }} />
           </>
         )}
       </View>
@@ -288,15 +305,9 @@ function Detail({ l }: { l: Listing }) {
 
 const useStyles = makeStyles(({ c }) => ({
   topBar: { position: 'absolute', left: gutter, right: gutter, flexDirection: 'row', justifyContent: 'space-between' },
-  counter: {
-    position: 'absolute',
-    right: gutter,
-    bottom: 40,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radius.full,
-  },
+  dots: { position: 'absolute', bottom: 40, alignSelf: 'center', flexDirection: 'row', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: c.onPhotoSoft, opacity: 0.6 },
+  dotOn: { width: 18, opacity: 1, backgroundColor: c.onPhoto },
   sheet: {
     marginTop: -24,
     borderTopLeftRadius: radius.xl,

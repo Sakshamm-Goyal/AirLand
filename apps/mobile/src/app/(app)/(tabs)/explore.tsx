@@ -4,9 +4,9 @@ import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { Heart, Plus, Search, SearchX, SlidersHorizontal, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LAND_TYPE_LABEL, ListingCard } from '@/components/ListingCard';
+import { FeaturedCard, LAND_TYPE_LABEL, ListingCard } from '@/components/ListingCard';
 import { Avatar, Button, Chip, EmptyState, IconButton, Skeleton, Text } from '@/components/ui';
 import { type Filters, useListings } from '@/lib/queries';
 import { useSession } from '@/lib/session';
@@ -47,6 +47,10 @@ export default function Explore() {
   const q = useListings(filters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
   const canList = user.role !== 'buyer';
+  const { width } = useWindowDimensions();
+  const railW = Math.min(width * 0.72, 300);
+  const browsing = Boolean(filters.q || filters.type || filters.saved || filters.minPrice || filters.maxPrice);
+  const verified = browsing ? [] : items.filter((l) => l.owner.verified && !l.isMine).slice(0, 6);
 
   const header = (
     <View style={{ paddingTop: insets.top + 8, gap: 16, paddingBottom: 16 }}>
@@ -100,6 +104,33 @@ export default function Explore() {
           />
         ))}
       </ScrollView>
+      {verified.length >= 2 ? (
+        <View style={{ gap: 12, marginTop: 4 }}>
+          <View style={[s.section, { paddingHorizontal: gutter }]}>
+            <Text variant="h1">From verified sellers</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={railW + 12}
+            decelerationRate="fast"
+            contentContainerStyle={{ paddingHorizontal: gutter, gap: 12 }}
+          >
+            {verified.map((l) => (
+              <FeaturedCard key={l.id} listing={l} width={railW} />
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+      {items.length ? (
+        <View style={[s.section, { paddingHorizontal: gutter, marginTop: 4 }]}>
+          <Text variant="h1">{filters.saved ? 'Saved plots' : browsing ? 'Results' : 'Latest land'}</Text>
+          <Text variant="small" color="muted">
+            {items.length}
+            {q.hasNextPage ? '+' : ''} {items.length === 1 ? 'plot' : 'plots'}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 
@@ -192,6 +223,7 @@ export default function Explore() {
 
 const useStyles = makeStyles(({ c }) => ({
   row: { flexDirection: 'row', alignItems: 'center' },
+  section: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   search: {
     flex: 1,
     height: 52,

@@ -28,6 +28,10 @@ const light = {
   bubbleOutText: '#F3F6F2',
   bubbleIn: '#FFFFFF',
   skeleton: '#E9E5DC',
+  // Text and chips laid over photos: same in both themes (photos don't change with the theme).
+  onPhoto: '#FFFFFF',
+  onPhotoSoft: 'rgba(255,255,255,0.82)',
+  photoGlass: 'rgba(255,255,255,0.2)',
 };
 
 const dark: typeof light = {
@@ -52,6 +56,10 @@ const dark: typeof light = {
   bubbleOutText: '#F3F6F2',
   bubbleIn: '#1E2321',
   skeleton: '#1E2321',
+  // Text and chips laid over photos: same in both themes (photos don't change with the theme).
+  onPhoto: '#FFFFFF',
+  onPhotoSoft: 'rgba(255,255,255,0.82)',
+  photoGlass: 'rgba(255,255,255,0.2)',
 };
 
 export type Colors = typeof light;
@@ -81,6 +89,9 @@ export const type = {
 } satisfies Record<string, TextStyle>;
 
 export type TypeVariant = keyof typeof type;
+
+/** Bottom-up darkening behind text laid over photos. */
+export const scrim = ['rgba(8,12,10,0)', 'rgba(8,12,10,0.78)'] as const;
 
 export const radius = { sm: 10, md: 14, lg: 20, xl: 28, full: 999 } as const;
 export const gutter = 20;

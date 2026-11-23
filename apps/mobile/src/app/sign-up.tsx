@@ -76,6 +76,7 @@ export default function SignUp() {
         render={({ field }) => (
           <Field
             label="Full name"
+            placeholder="As on your ID"
             value={field.value}
             onChangeText={field.onChange}
             error={err.name?.message}
@@ -90,6 +91,7 @@ export default function SignUp() {
         render={({ field }) => (
           <Field
             label="Email"
+            placeholder="you@example.com"
             value={field.value}
             onChangeText={field.onChange}
             error={err.email?.message}
@@ -136,6 +138,7 @@ export default function SignUp() {
         render={({ field }) => (
           <Field
             label="Password"
+            placeholder="At least 8 characters"
             value={field.value}
             onChangeText={field.onChange}
             error={err.password?.message}
