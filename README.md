@@ -55,7 +55,9 @@ cd apps/mobile && npx eas-cli build -p android --profile development   # once; i
 pnpm dev:mobile
 ```
 
-WebRTC needs native code, so the app runs in a **development build**, not Expo Go. Without Android Studio or Xcode, EAS builds it in the cloud.
+WebRTC needs native code, so the app runs in a **development build**, not Expo Go.
+
+**Quick look in a browser:** `pnpm --filter mobile web` runs the whole UI against the real API. Native-only pieces are swapped for web stand-ins in `apps/mobile/web-preview/`: an OpenStreetMap embed instead of Google Maps, and the call screens with real ringing/accept/decline signalling but avatars instead of audio/video. Phones never load these. Without Android Studio or Xcode, EAS builds it in the cloud.
 
 **Demo accounts** (seeded): `buyer@demo.test`, `seller@demo.test`, `broker@demo.test`, password `landconnect123`. The sign-in screen has one-tap buttons for them.
 
