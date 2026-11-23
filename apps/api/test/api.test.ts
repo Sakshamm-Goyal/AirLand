@@ -206,8 +206,10 @@ describe('calls', () => {
   it('goes missed after the ring timeout', async () => {
     const { conv, b } = await pair();
     const closed = next(b, 'call:closed');
+    const bubble = new Promise<string>((r) => b.on('message:new', (m) => m.kind === 'call' && r(m.body)));
     await emit(b, 'call:invite', { conversationId: conv.id, kind: 'audio' });
     expect((await closed).reason).toBe('missed');
+    expect(await bubble).toBe('Missed voice call');
   });
 
   it('reports busy when the callee is already on a call', async () => {

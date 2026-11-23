@@ -18,3 +18,7 @@ apps/api/uploads/
 
 # pnpm content-addressed store (created here when the home store is on another volume)
 .pnpm-store/
+
+# Playwright
+test-results/
+playwright-report/

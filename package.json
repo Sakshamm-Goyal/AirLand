@@ -13,10 +13,12 @@
     "test": "pnpm -r test",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "check": "pnpm lint && pnpm typecheck && pnpm test"
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "e2e": "playwright test -c e2e"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
+    "@playwright/test": "1.65.1",
     "typescript": "~6.0.3"
   }
 }

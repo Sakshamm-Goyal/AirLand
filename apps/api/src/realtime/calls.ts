@@ -39,14 +39,15 @@ const active = new Map<string, LiveCall>();
 
 const busy = (userId: string) => [...ringing.values(), ...active.values()].some((c) => c.callerId === userId || c.calleeId === userId);
 
-const LABEL: Record<CallEndReason, string> = {
-  ended: 'call',
-  rejected: 'call declined',
-  cancelled: 'call cancelled',
-  missed: 'missed call',
-  busy: 'call, line busy',
-  failed: 'call failed',
-};
+/** Chat bubble text for each outcome, e.g. "Video call · 2:14", "Missed voice call". */
+function bubbleText(kind: CallKind, reason: CallEndReason, durationSec: number | null) {
+  const K = kind === 'video' ? 'Video' : 'Voice';
+  const k = kind === 'video' ? 'video' : 'voice';
+  if (reason === 'ended') return durationSec != null ? `${K} call · ${formatDuration(durationSec)}` : `${K} call`;
+  if (reason === 'missed') return `Missed ${k} call`;
+  if (reason === 'busy') return `${K} call · line busy`;
+  return `${K} call ${reason === 'rejected' ? 'declined' : reason === 'cancelled' ? 'cancelled' : 'failed'}`;
+}
 
 /** Move a call to a terminal state exactly once: persist, log a chat bubble, tell both sides. */
 async function settle(call: LiveCall, reason: CallEndReason) {
@@ -55,8 +56,7 @@ async function settle(call: LiveCall, reason: CallEndReason) {
   const durationSec = call.answeredAt ? Math.round((Date.now() - call.answeredAt) / 1000) : null;
   const status = reason === 'failed' ? 'ended' : reason;
   await db.update(schema.calls).set({ status, endedAt: new Date() }).where(eq(schema.calls.id, call.id));
-  const kind = call.kind === 'video' ? 'Video' : 'Voice';
-  const body = reason === 'ended' && durationSec != null ? `${kind} call · ${formatDuration(durationSec)}` : `${kind} ${LABEL[reason]}`;
+  const body = bubbleText(call.kind, reason, durationSec);
   await postMessage(call.conversationId, call.callerId, body, 'call', { kind: call.kind, status, durationSec, callId: call.id });
   notify([call.callerId, call.calleeId], 'call:closed', { callId: call.id, reason, durationSec });
 }
