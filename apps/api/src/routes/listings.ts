@@ -31,8 +31,12 @@ export const listingRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.get('/listings', { schema: { querystring: listingQuerySchema } }, async (req): Promise<Page<Listing>> => {
     const q = req.query;
-    const where: (SQL | undefined)[] = [q.owner === 'me' ? eq(listings.ownerId, req.user.id) : eq(listings.status, 'active')];
+    // Public feed shows active plots only; your own and your saved ones also show when sold (with a Sold tag).
+    const where: (SQL | undefined)[] = [
+      q.owner === 'me' ? eq(listings.ownerId, req.user.id) : q.saved ? undefined : eq(listings.status, 'active'),
+    ];
     if (q.type) where.push(eq(listings.landType, q.type));
+    if (q.saved) where.push(sql`${savedListings.userId} is not null`);
     if (q.minPrice != null) where.push(gte(listings.priceInr, q.minPrice));
     if (q.maxPrice != null) where.push(lte(listings.priceInr, q.maxPrice));
     if (q.q) {

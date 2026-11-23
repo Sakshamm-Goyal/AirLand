@@ -92,7 +92,7 @@ export function ListingCard({ listing: l }: { listing: Listing }) {
                 {l.owner.name}
               </Text>
               <RoleBadge role={l.owner.role} verified={l.owner.verified} />
-              <Text variant="small" color="muted">
+              <Text variant="small" color="muted" numberOfLines={1} style={{ flexShrink: 0 }}>
                 · {timeAgo(l.createdAt)}
               </Text>
             </View>

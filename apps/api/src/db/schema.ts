@@ -119,9 +119,8 @@ export const conversations = pgTable('conversations', {
   kind: convKindEnum('kind').notNull(),
   title: text('title'),
   listingId: uuid('listing_id').references(() => listings.id, { onDelete: 'set null' }),
-  createdBy: uuid('created_by')
-    .notNull()
-    .references(() => users.id),
+  /** Nullable so deleting an account keeps the other side's history (set null, not cascade). */
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   /** "listingId:userA:userB" (sorted) so one buyer has one thread per listing. */
   directKey: text('direct_key').unique(),
   createdAt: createdAt(),

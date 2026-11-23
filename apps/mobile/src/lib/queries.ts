@@ -27,6 +27,7 @@ export interface Filters {
   type?: LandType;
   minPrice?: number;
   maxPrice?: number;
+  saved?: 'true';
 }
 
 /** Every query key in one place, so invalidation is greppable. */

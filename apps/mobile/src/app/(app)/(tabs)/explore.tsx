@@ -2,7 +2,7 @@ import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/
 import { LAND_TYPES, type LandType, type Listing } from '@landconnect/shared';
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
-import { Plus, Search, SearchX, SlidersHorizontal, X } from 'lucide-react-native';
+import { Heart, Plus, Search, SearchX, SlidersHorizontal, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +34,9 @@ export default function Explore() {
   const [filters, setFilters] = useState<Filters>({});
   const [band, setBand] = useState(0);
   const sheet = useRef<BottomSheetModal>(null);
+  // Extended FAB shrinks to an icon while scrolling down (Material pattern) so it never sits on card text.
+  const [compactFab, setCompactFab] = useState(false);
+  const lastY = useRef(0);
 
   // Debounced search: one request after typing pauses.
   useEffect(() => {
@@ -81,6 +84,12 @@ export default function Explore() {
         />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: 8 }}>
+        <Chip
+          label="Saved"
+          icon={Heart}
+          selected={filters.saved === 'true'}
+          onPress={() => setFilters((f) => ({ ...f, saved: f.saved ? undefined : 'true' }))}
+        />
         <Chip label="All" selected={!filters.type} onPress={() => setFilters((f) => ({ ...f, type: undefined }))} />
         {LAND_TYPES.map((t: LandType) => (
           <Chip
@@ -119,6 +128,8 @@ export default function Explore() {
               body={(q.error as Error).message}
               action={<Button title="Try again" size="md" onPress={() => q.refetch()} />}
             />
+          ) : filters.saved ? (
+            <EmptyState icon={Heart} title="Nothing saved yet" body="Tap the heart on any plot to keep it here for later." />
           ) : (
             <EmptyState icon={SearchX} title="No land matches" body="Try another place, land type or price range." />
           )
@@ -130,10 +141,27 @@ export default function Explore() {
         }
         contentContainerStyle={{ paddingBottom: 120 }}
         keyboardDismissMode="on-drag"
+        onScroll={(e) => {
+          const y = e.nativeEvent.contentOffset.y;
+          if (Math.abs(y - lastY.current) > 12) setCompactFab(y > lastY.current && y > 80);
+          lastY.current = y;
+        }}
+        scrollEventThrottle={64}
       />
 
       {canList ? (
-        <Button title="List land" icon={Plus} onPress={() => router.push('/listing/new')} style={[s.fab, { bottom: 24 }]} />
+        compactFab ? (
+          <IconButton
+            icon={Plus}
+            label="List land"
+            variant="ink"
+            size={58}
+            onPress={() => router.push('/listing/new')}
+            style={[s.fab, { bottom: 24 }]}
+          />
+        ) : (
+          <Button title="List land" icon={Plus} onPress={() => router.push('/listing/new')} style={[s.fab, { bottom: 24 }]} />
+        )
       ) : null}
 
       <BottomSheetModal

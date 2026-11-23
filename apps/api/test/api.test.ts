@@ -277,6 +277,17 @@ describe('http', () => {
   });
 });
 
+describe('accounts', () => {
+  it('a user who started a conversation can still be deleted; the other side keeps the thread', async () => {
+    const { db, schema } = await import('../src/db/client.ts');
+    const { eq } = await import('drizzle-orm');
+    const { buyer, seller, conv } = await pair();
+    await db.delete(schema.users).where(eq(schema.users.id, buyer.user.id));
+    const inbox = await api<Conversation[]>('GET', '/conversations', seller.accessToken);
+    expect(inbox.body.some((c) => c.id === conv.id)).toBe(true);
+  });
+});
+
 describe('uploads', () => {
   const multipart = (name: string, type: string, body: Buffer) => {
     const b = '----lcboundary';
@@ -304,6 +315,7 @@ describe('uploads', () => {
     expect(got.statusCode).toBe(200);
     expect(got.headers['content-type']).toBe('image/jpeg');
     expect(got.headers['cache-control']).toContain('immutable');
+    expect(got.headers['cross-origin-resource-policy']).toBe('cross-origin'); // embeddable by the web app
     expect(Buffer.compare(got.rawPayload, jpeg)).toBe(0);
 
     const txt = multipart('x.txt', 'text/plain', Buffer.from('hi'));
@@ -322,6 +334,21 @@ describe('uploads', () => {
 });
 
 describe('listing lifecycle', () => {
+  it('saved filter returns only what the viewer saved', async () => {
+    const seller = await user('seller');
+    const buyer = await user('buyer');
+    const a = await api<Listing>('POST', '/listings', seller.accessToken, { ...listing, title: 'Plot the buyer saves' });
+    await api('POST', '/listings', seller.accessToken, { ...listing, title: 'Plot the buyer ignores' });
+    expect((await api('PUT', `/listings/${a.body.id}/save`, buyer.accessToken)).status).toBe(204);
+    const saved = await api<Page<Listing>>('GET', '/listings?saved=true', buyer.accessToken);
+    expect(saved.body.items.map((l) => l.id)).toEqual([a.body.id]);
+    expect(saved.body.items[0]!.saved).toBe(true);
+    // Still listed (as sold) after the owner sells it, so the buyer isn't left wondering where it went.
+    await api('PATCH', `/listings/${a.body.id}`, seller.accessToken, { status: 'sold' });
+    const after = await api<Page<Listing>>('GET', '/listings?saved=true', buyer.accessToken);
+    expect(after.body.items[0]).toMatchObject({ id: a.body.id, status: 'sold' });
+  });
+
   it('a sold listing leaves the public feed but stays in My listings', async () => {
     const seller = await user('seller');
     const l = await api<Listing>('POST', '/listings', seller.accessToken, { ...listing, title: 'Plot that will be sold' });

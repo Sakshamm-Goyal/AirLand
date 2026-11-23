@@ -30,7 +30,8 @@ const [buyer, seller, broker, seller2] = await db
   ])
   .returning();
 
-const img = (seed: string, n = 4) => Array.from({ length: n }, (_, i) => `https://picsum.photos/seed/lc-${seed}-${i}/1200/800`);
+// Hand-picked land/farm photos (Unsplash via Picsum, stable by id). Replace with real plot photos before launch.
+const img = (...ids: number[]) => ids.map((id) => `https://picsum.photos/id/${id}/1200/800`);
 
 const data: [string, ListingInput][] = [
   [
@@ -52,7 +53,7 @@ const data: [string, ListingInput][] = [
       waterSource: 'borewell',
       titleDocs: ['RTC', 'EC', 'Mutation'],
       zoning: 'Agricultural',
-      images: img('devanahalli'),
+      images: img(85, 337, 107, 110),
     },
   ],
   [
@@ -73,7 +74,7 @@ const data: [string, ListingInput][] = [
       waterSource: 'municipal',
       titleDocs: ['Khata', 'EC'],
       zoning: 'Residential',
-      images: img('sarjapur'),
+      images: img(255, 17, 18, 141),
     },
   ],
   [
@@ -94,7 +95,7 @@ const data: [string, ListingInput][] = [
       waterSource: 'borewell',
       titleDocs: ['Pahani', 'Passbook', 'EC'],
       zoning: 'Agricultural',
-      images: img('chevella'),
+      images: img(206, 93, 127, 112),
     },
   ],
   [
@@ -115,7 +116,7 @@ const data: [string, ListingInput][] = [
       waterSource: 'borewell',
       titleDocs: ['RTC', 'DC Conversion', 'EC'],
       zoning: 'Commercial',
-      images: img('hosur'),
+      images: img(141, 66, 198, 247),
     },
   ],
   [
@@ -136,7 +137,7 @@ const data: [string, ListingInput][] = [
       waterSource: 'canal',
       titleDocs: ['Thandaper', 'EC'],
       zoning: null,
-      images: img('kumarakom'),
+      images: img(128, 347, 11, 353),
     },
   ],
   [
@@ -157,7 +158,7 @@ const data: [string, ListingInput][] = [
       waterSource: 'municipal',
       titleDocs: ['7/12', 'EC'],
       zoning: 'Industrial',
-      images: img('chakan'),
+      images: img(247, 141, 66, 198),
     },
   ],
   [
@@ -178,7 +179,7 @@ const data: [string, ListingInput][] = [
       waterSource: 'river',
       titleDocs: ['7/12'],
       zoning: 'Agricultural',
-      images: img('mulshi'),
+      images: img(287, 353, 11, 198),
     },
   ],
   [
@@ -199,7 +200,7 @@ const data: [string, ListingInput][] = [
       waterSource: 'municipal',
       titleDocs: ['Khata', 'EC'],
       zoning: 'Residential',
-      images: img('mysuru'),
+      images: img(18, 17, 127, 255),
     },
   ],
 ];

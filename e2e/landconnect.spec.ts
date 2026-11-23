@@ -83,6 +83,7 @@ test('buyer finds the listing by search, sees no phone number, and starts a chat
     .first()
     .click();
   await visible(b, 'Phone hidden');
+  await b.getByRole('button', { name: 'Save', exact: true }).click();
   // The seller's contact details must never reach the buyer (the buyer's own email is on their Profile tab).
   await expect(b.getByText(seller.email)).toHaveCount(0);
   await b.getByRole('button', { name: 'Chat' }).click();
@@ -158,4 +159,8 @@ test('owner edits the listing and marks it sold; it leaves the buyer feed', asyn
   await b.goto('/explore');
   await b.getByLabel('Search listings').fill(run);
   await visible(b, 'No land matches');
+  // …but the buyer's Saved list keeps it, marked Sold.
+  await b.getByRole('button', { name: 'Saved' }).click();
+  await expect(b.getByRole('button', { name: new RegExp(`^${title} \\(price reduced\\)`) })).toBeVisible();
+  await visible(b, 'Sold');
 });

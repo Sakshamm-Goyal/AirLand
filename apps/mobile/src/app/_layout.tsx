@@ -13,7 +13,7 @@ import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider, useSegments } fr
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Toaster } from 'sonner-native';
@@ -26,9 +26,15 @@ import { useSession } from '@/lib/session';
 import { font, useTheme } from '@/theme';
 
 registerGlobals(); // WebRTC globals for livekit-client; must run before any Room is created
-// Dev-only noise from expo-router's NativeTabs web build (tab preloading); harmless, but its toast covers real buttons.
-// Logged as a format string ("The action '%s' … was not handled by any navigator"), so match the fixed part.
-LogBox.ignoreLogs(['was not handled by any navigator']);
+// Dev-only noise from expo-router's NativeTabs web build (tab preloading): harmless, but Expo's web overlay turns it
+// into a toast that covers real buttons. LogBox.ignoreLogs is a no-op on web, so filter that one message at the source.
+if (__DEV__ && Platform.OS === 'web') {
+  const original = console.error;
+  console.error = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('was not handled by any navigator')) return;
+    original(...args);
+  };
+}
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {

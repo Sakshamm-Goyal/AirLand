@@ -6,6 +6,7 @@
 > - Calls end with one event, `call:closed { reason }`, instead of separate rejected/cancelled/missed events (see `packages/shared/src/events.ts`).
 > - **Photos are stored in Postgres** (`uploads` table, immutable cache headers) because free hosts wipe their disk on restart. Phones compress photos to about 1600 px first.
 > - **Blocking** also stops messages in an existing 1:1 conversation (not only new chats and calls). `GET /me/blocks` lists blocked people for the Unblock screen.
+> - `GET /listings?saved=true` lists the viewer's saved plots; sold ones stay there with a Sold tag. Uploaded photos are served with `Cross-Origin-Resource-Policy: cross-origin` so the app can embed them.
 > - On the phone, the call UI is a **root-level overlay** driven by the call store rather than a route, so an incoming call can never race navigation.
 
 ## 1. System overview

@@ -43,7 +43,8 @@ export async function buildApp() {
   });
 
   const origins = config.CORS_ORIGINS === '*' ? true : config.CORS_ORIGINS.split(',');
-  await app.register(helmet);
+  // Photos are embedded by the app from another origin; helmet's default CORP (same-origin) makes browsers block them.
+  await app.register(helmet, { crossOriginResourcePolicy: { policy: 'cross-origin' } });
   // Default is GET/HEAD/POST only; browsers would block edit, save and delete.
   await app.register(cors, { origin: origins, methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'] });
   await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' });
