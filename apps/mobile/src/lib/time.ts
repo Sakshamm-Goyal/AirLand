@@ -20,3 +20,14 @@ export function chatTime(iso: string) {
 }
 
 export const clockTime = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+/** Day separator in a chat thread: "Today", "Yesterday", "Mon, 23 Nov". */
+export function dayLabel(iso: string) {
+  const d = new Date(iso);
+  const days = Math.round((new Date(new Date().toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86_400_000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+export const sameDay = (a: string, b: string) => new Date(a).toDateString() === new Date(b).toDateString();

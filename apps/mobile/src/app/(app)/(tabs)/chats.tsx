@@ -1,5 +1,6 @@
 import type { Conversation } from '@landconnect/shared';
 import { FlashList } from '@shopify/flash-list';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Lock, MessagesSquare, Phone, Plus, Users, Video } from 'lucide-react-native';
 import { Pressable, RefreshControl, View } from 'react-native';
@@ -23,6 +24,7 @@ export default function Chats() {
         data={q.data ?? []}
         keyExtractor={(x) => x.id}
         renderItem={({ item }) => <Row conv={item} />}
+        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: c.line, marginLeft: gutter + 66 }} />}
         ListHeaderComponent={
           <View style={{ paddingTop: insets.top + 8, paddingHorizontal: gutter, paddingBottom: 12, gap: 6 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -91,7 +93,7 @@ function Row({ conv }: { conv: Conversation }) {
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text variant="h2" numberOfLines={1} style={{ flex: 1 }}>
+          <Text variant={conv.unread ? 'h2' : 'bodyMedium'} numberOfLines={1} style={{ flex: 1 }}>
             {convTitle(conv, me)}
           </Text>
           <Text variant="small" color={conv.unread ? 'brand' : 'muted'}>
@@ -105,24 +107,40 @@ function Row({ conv }: { conv: Conversation }) {
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {CallIcon ? <CallIcon size={14} color={c.muted} /> : null}
-          <Text variant="small" color={typing ? 'brand' : 'muted'} numberOfLines={1} style={{ flex: 1 }}>
+          <Text
+            variant={conv.unread ? 'smallMedium' : 'small'}
+            color={typing ? 'brand' : conv.unread ? 'ink' : 'muted'}
+            numberOfLines={1}
+            style={{ flex: 1 }}
+          >
             {preview}
           </Text>
           {conv.unread ? (
             <View style={s.badge}>
-              <Text variant="micro" style={{ color: '#fff' }}>
-                {conv.unread}
+              <Text variant="micro" color="onInk">
+                {conv.unread > 99 ? '99+' : conv.unread}
               </Text>
             </View>
           ) : null}
         </View>
       </View>
+      {conv.listing?.image ? (
+        <Image
+          source={conv.listing.image}
+          style={s.thumb}
+          contentFit="cover"
+          transition={200}
+          recyclingKey={conv.id}
+          accessibilityLabel={`Plot: ${conv.listing.title}`}
+        />
+      ) : null}
     </Pressable>
   );
 }
 
 const useStyles = makeStyles(({ c }) => ({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: gutter, paddingVertical: 12 },
+  thumb: { width: 52, height: 52, borderRadius: 12, backgroundColor: c.skeleton },
   roomIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: c.brandSoft, alignItems: 'center', justifyContent: 'center' },
   online: {
     position: 'absolute',

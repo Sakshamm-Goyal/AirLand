@@ -6,6 +6,7 @@ import {
   ArrowUp,
   Check,
   ChevronLeft,
+  ChevronRight,
   Clock3,
   EllipsisVertical,
   Phone,
@@ -15,7 +16,7 @@ import {
   Video,
 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
@@ -26,10 +27,16 @@ import { upsertMessage, useConversation, useMessages, useSetBlocked } from '@/li
 import { usePresence, useTyping } from '@/lib/realtime';
 import { useSession } from '@/lib/session';
 import { emitAck, getSocket } from '@/lib/socket';
-import { clockTime } from '@/lib/time';
+import { clockTime, dayLabel, sameDay } from '@/lib/time';
 import { gutter, makeStyles, radius, type, useTheme } from '@/theme';
 
 type UiMessage = Message & { pending?: boolean; failed?: boolean };
+
+// One-tap openers for the first message, by who is asking.
+const STARTERS = {
+  buyer: ['Is the price negotiable?', 'Can I visit this weekend?', 'Are the title documents clear?', 'Is there road access?'],
+  owner: ["Yes, it's still available.", 'When would you like to visit?', 'I can share the documents here.'],
+};
 
 export default function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,6 +44,7 @@ export default function Chat() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const me = useSession((st) => st.user!.id);
+  const myRole = useSession((st) => st.user!.role);
   const conv = useConversation(id).data;
   const msgs = useMessages(id);
   const typingUser = useTyping((t) => t[id]);
@@ -108,7 +116,10 @@ export default function Chat() {
                 <Users size={20} color={c.brand} />
               </View>
             ) : (
-              <Avatar name={peer.name} uri={peer.avatarUrl} size={40} />
+              <View>
+                <Avatar name={peer.name} uri={peer.avatarUrl} size={40} />
+                {online ? <View style={s.onlineDot} accessibilityLabel="Online" /> : null}
+              </View>
             )}
             <View style={{ flex: 1 }}>
               <Text variant="h2" numberOfLines={1}>
@@ -191,17 +202,24 @@ export default function Chat() {
           accessibilityLabel={`Open listing ${conv.listing.title}`}
         >
           <Image source={conv.listing.image} style={s.pinnedImg} contentFit="cover" />
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="label" color="muted">
+              Enquiry about
+            </Text>
             <Text variant="smallMedium" numberOfLines={1}>
               {conv.listing.title}
             </Text>
-            <Text variant="small" color="muted" numberOfLines={1}>
-              {formatInr(conv.listing.priceInr)} · {conv.listing.locality}
+            <Text variant="small" numberOfLines={1}>
+              <Text variant="smallMedium" color="accent">
+                {formatInr(conv.listing.priceInr)}
+              </Text>
+              <Text variant="small" color="muted">
+                {' '}
+                · {conv.listing.locality}
+              </Text>
             </Text>
           </View>
-          <Text variant="micro" color="brand">
-            View
-          </Text>
+          <ChevronRight size={20} color={c.muted} />
         </Pressable>
       ) : null}
 
@@ -210,12 +228,27 @@ export default function Chat() {
         inverted
         keyExtractor={(m) => m.clientId ?? m.id}
         renderItem={({ item, index }) => (
-          <Bubble
-            m={item}
-            mine={item.senderId === me}
-            grouped={items[index + 1]?.senderId === item.senderId && items[index + 1]?.kind === 'text'}
-            onRetry={() => send(item.body, item)}
-          />
+          <View>
+            {/* Inverted list: the separator goes above the first message of each day, i.e. when the older one differs. */}
+            {!items[index + 1] || !sameDay(items[index + 1]!.createdAt, item.createdAt) ? (
+              <View style={s.day}>
+                <Text variant="micro" color="muted">
+                  {dayLabel(item.createdAt)}
+                </Text>
+              </View>
+            ) : null}
+            <Bubble
+              m={item}
+              mine={item.senderId === me}
+              grouped={
+                items[index + 1]?.senderId === item.senderId &&
+                items[index + 1]?.kind === 'text' &&
+                sameDay(items[index + 1]!.createdAt, item.createdAt)
+              }
+              onRetry={() => send(item.body, item)}
+              onCallBack={peer && !isRoom ? (kind) => calls.start(id, kind, peer, conv?.listing?.title ?? null) : undefined}
+            />
+          </View>
         )}
         onEndReached={() => msgs.hasNextPage && !msgs.isFetchingNextPage && msgs.fetchNextPage()}
         contentContainerStyle={{ paddingHorizontal: gutter, paddingVertical: 12 }}
@@ -223,6 +256,27 @@ export default function Chat() {
       />
 
       <KeyboardStickyView offset={{ opened: insets.bottom }}>
+        {!isRoom && msgs.data && !items.some((m) => m.senderId === me && m.kind === 'text') ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: gutter - 6, paddingBottom: 10, gap: 8 }}
+          >
+            {STARTERS[myRole === 'buyer' ? 'buyer' : 'owner'].map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => send(t)}
+                style={s.starter}
+                accessibilityRole="button"
+                accessibilityLabel={t}
+                accessibilityHint="Sends this message"
+              >
+                <Text variant="smallMedium">{t}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
         <View style={[s.composer, { paddingBottom: insets.bottom + 10 }]}>
           <TextInput
             value={text}
@@ -249,7 +303,19 @@ export default function Chat() {
   );
 }
 
-function Bubble({ m, mine, grouped, onRetry }: { m: UiMessage; mine: boolean; grouped: boolean; onRetry: () => void }) {
+function Bubble({
+  m,
+  mine,
+  grouped,
+  onRetry,
+  onCallBack,
+}: {
+  m: UiMessage;
+  mine: boolean;
+  grouped: boolean;
+  onRetry: () => void;
+  onCallBack?: (kind: 'audio' | 'video') => void;
+}) {
   const s = useStyles();
   const { c } = useTheme();
   if (m.kind === 'system') {
@@ -270,12 +336,25 @@ function Bubble({ m, mine, grouped, onRetry }: { m: UiMessage; mine: boolean; gr
         <View style={[s.callIcon, { backgroundColor: missed ? c.dangerSoft : c.brandSoft }]}>
           <Icon size={17} color={missed ? c.danger : c.brand} />
         </View>
-        <View>
+        <View style={{ flexShrink: 1 }}>
           <Text variant="smallMedium">{m.body}</Text>
           <Text variant="micro" color="muted">
             {clockTime(m.createdAt)}
           </Text>
         </View>
+        {onCallBack ? (
+          <Pressable
+            onPress={() => onCallBack(meta.kind === 'video' ? 'video' : 'audio')}
+            style={s.callBack}
+            accessibilityRole="button"
+            accessibilityLabel={missed && !mine ? 'Call back' : 'Call again'}
+            hitSlop={6}
+          >
+            <Text variant="micro" color="brand">
+              {missed && !mine ? 'Call back' : 'Call again'}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
@@ -331,7 +410,36 @@ const useStyles = makeStyles(({ c }) => ({
     borderWidth: 1,
     borderColor: c.line,
   },
-  pinnedImg: { width: 44, height: 44, borderRadius: 10, backgroundColor: c.skeleton },
+  pinnedImg: { width: 56, height: 56, borderRadius: 12, backgroundColor: c.skeleton },
+  onlineDot: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: c.ok,
+    borderWidth: 2,
+    borderColor: c.surface,
+  },
+  day: {
+    alignSelf: 'center',
+    backgroundColor: c.surfaceAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  starter: {
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.line,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: radius.full,
+  },
+  callBack: { marginLeft: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.full, backgroundColor: c.brandSoft },
   bubble: { paddingHorizontal: 14, paddingTop: 9, paddingBottom: 6, borderRadius: 18, gap: 2 },
   out: { backgroundColor: c.bubbleOut, borderBottomRightRadius: 6 },
   in: { backgroundColor: c.bubbleIn, borderBottomLeftRadius: 6, borderWidth: 1, borderColor: c.line },
