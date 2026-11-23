@@ -1,4 +1,4 @@
-import { formatArea, formatInr, groupInr, type Listing, toSqft } from '@landconnect/shared';
+import { formatArea, formatInr, formatPerUnit, groupInr, type Listing, toSqft } from '@landconnect/shared';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -7,7 +7,6 @@ import {
   Droplets,
   FileCheck2,
   Heart,
-  Landmark,
   Lock,
   MapPin,
   Pencil,
@@ -22,7 +21,7 @@ import { Alert, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-
 import MapView, { Circle, Marker } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
-import { LAND_TYPE_LABEL, PerUnitChip } from '@/components/ListingCard';
+import { LAND_TYPE_LABEL } from '@/components/ListingCard';
 import { Avatar, Button, EmptyState, IconButton, RoleBadge, Skeleton, Text } from '@/components/ui';
 import { calls } from '@/features/calls/store';
 import { useDeleteListing, useListing, useStartConversation, useToggleSave, useUpdateListing } from '@/lib/queries';
@@ -79,32 +78,38 @@ function Detail({ l }: { l: Listing }) {
       { text: 'Delete', style: 'destructive', onPress: () => del.mutate(l.id, { onSuccess: () => router.back() }) },
     ]);
 
-  const specs = [
+  const place = [l.locality, l.district, l.state].filter(Boolean).join(', ');
+  const facts = [
+    formatArea(l.area, l.areaUnit),
+    l.roadAccessFt != null ? `${l.roadAccessFt} ft road` : null,
+    l.waterSource ? l.waterSource[0]!.toUpperCase() + l.waterSource.slice(1) : null,
+  ].filter(Boolean);
+  const highlights = [
+    l.titleDocs.length
+      ? { icon: FileCheck2, title: 'Title documents available', body: `${l.titleDocs.join(', ')} can be shared in chat.` }
+      : null,
     {
       icon: Ruler,
-      label: 'Area',
-      value: `${formatArea(l.area, l.areaUnit)}`,
-      sub: l.areaUnit === 'sqft' ? null : `${groupInr(toSqft(l.area, l.areaUnit))} sq ft`,
+      title: formatArea(l.area, l.areaUnit),
+      body: l.areaUnit === 'sqft' ? 'Plot area' : `${groupInr(toSqft(l.area, l.areaUnit))} sq ft in total`,
     },
     {
-      icon: Landmark,
-      label: 'Land type',
-      value: LAND_TYPE_LABEL[l.landType],
-      sub: l.zoning && l.zoning.toLowerCase() !== l.landType ? l.zoning : null,
+      icon: Waypoints,
+      title: l.roadAccessFt != null ? `${l.roadAccessFt} ft road access` : 'Road access not stated',
+      body: l.roadAccessFt != null ? 'Vehicle access to the plot.' : 'Ask the owner in chat.',
     },
-    { icon: Waypoints, label: 'Road access', value: l.roadAccessFt != null ? `${l.roadAccessFt} ft road` : 'Not stated', sub: null },
     {
       icon: Droplets,
-      label: 'Water',
-      value: l.waterSource ? l.waterSource[0]!.toUpperCase() + l.waterSource.slice(1) : 'Not stated',
-      sub: null,
+      title: l.waterSource ? `Water: ${l.waterSource}` : 'Water source not stated',
+      body: l.waterSource ? 'Water available on the land.' : 'Ask the owner in chat.',
     },
-  ];
+    { icon: Lock, title: 'Your number stays private', body: 'Chat and call the owner inside LandConnect.' },
+  ].filter((h): h is { icon: typeof Ruler; title: string; body: string } => h != null);
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <StatusBar style="light" />
-      <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
         <View>
           <ScrollView
             horizontal
@@ -125,108 +130,90 @@ function Detail({ l }: { l: Listing }) {
             ))}
           </ScrollView>
           <View style={[s.topBar, { top: insets.top + 8 }]}>
-            <IconButton icon={ChevronLeft} label="Back" variant="glass" onPress={() => router.back()} />
+            <IconButton icon={ChevronLeft} label="Back" variant="glass" size={40} onPress={() => router.back()} />
             {!l.isMine ? (
               <IconButton
                 icon={Heart}
                 label={l.saved ? 'Remove from saved' : 'Save'}
                 variant="glass"
-                color={l.saved ? c.danger : c.ink}
+                size={40}
+                color={l.saved ? c.accent : c.ink}
                 onPress={() => save.mutate(!l.saved)}
               />
             ) : null}
           </View>
-          {l.images.length > 1 ? (
-            <View style={s.dots} accessibilityLabel={`Photo ${page + 1} of ${l.images.length}`}>
-              {l.images.map((uri, i) => (
-                <View key={uri} style={[s.dot, i === page && s.dotOn]} />
-              ))}
-            </View>
-          ) : null}
+          <View style={s.counter} accessibilityLabel={`Photo ${page + 1} of ${l.images.length}`}>
+            <Text variant="micro" color="onPhoto">
+              {page + 1} / {l.images.length}
+            </Text>
+          </View>
         </View>
 
         <View style={s.sheet}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={s.tag}>
-              <Text variant="micro" color="inkSoft">
-                {LAND_TYPE_LABEL[l.landType]}
-              </Text>
-            </View>
+          <View style={{ gap: 6 }}>
             {l.status === 'sold' ? (
-              <View style={[s.tag, { backgroundColor: c.dangerSoft }]}>
+              <View style={s.sold}>
                 <Text variant="micro" color="danger">
                   Sold
                 </Text>
               </View>
             ) : null}
-          </View>
-          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
-            <Text variant="title" style={{ flex: 1 }}>
-              {l.title}
+            <Text variant="display">{l.title}</Text>
+            <Text variant="bodyMedium" style={{ marginTop: 6 }}>
+              {LAND_TYPE_LABEL[l.landType]} land in {place}
             </Text>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text variant="micro" color="muted">
-                Asking
-              </Text>
-              <Text variant="priceLg" color="accent">
-                {formatInr(l.priceInr)}
-              </Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <MapPin size={15} color={c.muted} />
-            <Text variant="small" color="muted" style={{ flex: 1 }}>
-              {[l.locality, l.district, l.state].filter(Boolean).join(', ')}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <PerUnitChip listing={l} />
             <Text variant="small" color="muted">
-              ₹ {groupInr(l.priceInr)} total
+              {facts.join(' · ')}
             </Text>
           </View>
 
-          <View style={s.grid}>
-            {specs.map(({ icon: Icon, label, value, sub }) => (
-              <View key={label} style={s.spec} accessible accessibilityLabel={`${label}: ${value}${sub ? `, ${sub}` : ''}`}>
-                <View style={s.specIcon}>
-                  <Icon size={17} color={c.ink} />
+          <View style={s.divider} />
+          <View style={s.owner}>
+            <Avatar name={l.owner.name} uri={l.owner.avatarUrl} size={48} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="h2">{l.isMine ? 'Listed by you' : `Listed by ${l.owner.name}`}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <RoleBadge role={l.owner.role} verified={l.owner.verified} />
+                <Text variant="small" color="muted">
+                  · Phone hidden
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={s.divider} />
+          <View style={{ gap: 22 }}>
+            {highlights.map(({ icon: Icon, title, body }) => (
+              <View key={title} style={{ flexDirection: 'row', gap: 18, alignItems: 'flex-start' }}>
+                <Icon size={24} color={c.ink} strokeWidth={1.6} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text variant="h2">{title}</Text>
+                  <Text variant="small" color="muted">
+                    {body}
+                  </Text>
                 </View>
-                <Text variant="smallMedium" numberOfLines={1} style={{ textAlign: 'center' }}>
-                  {value}
-                </Text>
-                <Text variant="micro" color="muted" numberOfLines={1}>
-                  {label}
-                </Text>
               </View>
             ))}
           </View>
 
-          {l.titleDocs.length ? (
-            <View style={{ gap: 10 }}>
-              <Text variant="h1">Title documents</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {l.titleDocs.map((d) => (
-                  <View key={d} style={s.doc}>
-                    <FileCheck2 size={15} color={c.brand} />
-                    <Text variant="smallMedium">{d}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ) : null}
-
           {l.description ? (
-            <View style={{ gap: 8 }}>
-              <Text variant="h1">About this land</Text>
-              <Text variant="body" color="inkSoft">
-                {l.description}
-              </Text>
-            </View>
+            <>
+              <View style={s.divider} />
+              <View style={{ gap: 10 }}>
+                <Text variant="h1">About this land</Text>
+                <Text variant="body" color="inkSoft">
+                  {l.description}
+                </Text>
+              </View>
+            </>
           ) : null}
 
-          <View style={{ gap: 10 }}>
-            <Text variant="h1">Location</Text>
+          <View style={s.divider} />
+          <View style={{ gap: 12 }}>
+            <Text variant="h1">Where it is</Text>
+            <Text variant="small" color="muted">
+              {place}
+            </Text>
             <View style={s.map}>
               <MapView
                 style={StyleSheet.absoluteFill}
@@ -241,8 +228,8 @@ function Detail({ l }: { l: Listing }) {
                   <Circle
                     center={{ latitude: l.lat, longitude: l.lng }}
                     radius={1100}
-                    fillColor="rgba(28,106,78,0.18)"
-                    strokeColor="rgba(28,106,78,0.6)"
+                    fillColor="rgba(227,28,95,0.14)"
+                    strokeColor="rgba(227,28,95,0.6)"
                   />
                 ) : (
                   <Marker coordinate={{ latitude: l.lat, longitude: l.lng }} />
@@ -254,20 +241,6 @@ function Detail({ l }: { l: Listing }) {
                 Approximate area. The owner shares the exact location in chat.
               </Text>
             ) : null}
-          </View>
-
-          <View style={s.owner}>
-            <Avatar name={l.owner.name} uri={l.owner.avatarUrl} size={52} />
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text variant="h2">{l.isMine ? 'You' : l.owner.name}</Text>
-              <RoleBadge role={l.owner.role} verified={l.owner.verified} />
-            </View>
-            <View style={{ alignItems: 'flex-end', gap: 2 }}>
-              <Lock size={16} color={c.brand} />
-              <Text variant="micro" color="muted">
-                Phone hidden
-              </Text>
-            </View>
           </View>
         </View>
       </ScrollView>
@@ -283,7 +256,7 @@ function Detail({ l }: { l: Listing }) {
             />
             <Button
               title={l.status === 'sold' ? 'Mark available' : 'Mark sold'}
-              kind={l.status === 'sold' ? 'brand' : 'primary'}
+              kind={l.status === 'sold' ? 'brand' : 'ink'}
               style={{ flex: 1 }}
               loading={update.isPending}
               onPress={() => update.mutate({ status: l.status === 'sold' ? 'active' : 'sold' })}
@@ -292,9 +265,17 @@ function Detail({ l }: { l: Listing }) {
           </>
         ) : (
           <>
-            <Button title="Chat" arrow style={{ flex: 1 }} loading={start.isPending} onPress={openChat} />
-            <Button title="Call" icon={Phone} kind="accent" disabled={start.isPending} onPress={() => call('audio')} />
-            <IconButton icon={Video} label="Video call" size={54} onPress={() => call('video')} />
+            <View style={{ flex: 1 }}>
+              <Text variant="priceLg" numberOfLines={1} style={{ textDecorationLine: 'underline' }}>
+                {formatInr(l.priceInr)}
+              </Text>
+              <Text variant="small" color="muted" numberOfLines={1}>
+                {formatPerUnit(l.priceInr, l.area, l.areaUnit)}
+              </Text>
+            </View>
+            <IconButton icon={Phone} label="Call" size={48} onPress={() => call('audio')} />
+            <IconButton icon={Video} label="Video call" size={48} onPress={() => call('video')} />
+            <Button title="Chat" loading={start.isPending} onPress={openChat} />
           </>
         )}
       </View>
@@ -304,53 +285,27 @@ function Detail({ l }: { l: Listing }) {
 
 const useStyles = makeStyles(({ c }) => ({
   topBar: { position: 'absolute', left: gutter, right: gutter, flexDirection: 'row', justifyContent: 'space-between' },
-  dots: { position: 'absolute', bottom: 40, alignSelf: 'center', flexDirection: 'row', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: c.onPhotoSoft, opacity: 0.6 },
-  dotOn: { width: 18, opacity: 1, backgroundColor: c.onPhoto },
+  counter: {
+    position: 'absolute',
+    right: gutter,
+    bottom: 40,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+  },
   sheet: {
     marginTop: -24,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     backgroundColor: c.bg,
     padding: gutter,
-    paddingTop: 24,
-    gap: 12,
+    paddingTop: 26,
   },
-  tag: { backgroundColor: c.surfaceAlt, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.full },
-  grid: { flexDirection: 'row', gap: 8, marginVertical: 8 },
-  spec: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: c.surface,
-    borderRadius: radius.md,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: c.line,
-  },
-  specIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: c.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  doc: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: c.brandSoft,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-  },
-  map: { height: 180, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: c.surfaceAlt },
-  owner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: c.surface,
-    borderRadius: radius.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: c.line,
-    marginTop: 8,
-  },
+  sold: { alignSelf: 'flex-start', backgroundColor: c.dangerSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.full },
+  divider: { height: 1, backgroundColor: c.line, marginVertical: 24 },
+  owner: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  map: { height: 200, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: c.surfaceAlt },
   bar: {
     position: 'absolute',
     left: 0,

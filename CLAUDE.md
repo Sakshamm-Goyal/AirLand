@@ -70,14 +70,14 @@ LiveKit SFU (WebRTC/UDP, TURN fallback built in) — one hop to the nearest edge
 - **Accessibility is part of done:** every icon-only button has `accessibilityLabel`; min 48 dp targets; respect font scaling (no fixed-height text containers); contrast ≥ 4.5:1.
 - Never edit `ios/` or `android/` (CNG). Native config goes through `app.json` plugins.
 
-## Design system ("luxury minimal")
+## Design system ("Airbnb-like")
 
-Chosen by the product owner from three mockups (`docs/design/directions.png`, option B): quiet off-white canvas, white cards with an inset photo, one info line per card, copper prices on the right, near-black pill CTAs with a copper arrow circle. Few badges, almost no shadow.
+The product owner asked for an Airbnb feel after trying "earthy premium" and "luxury minimal": white canvas, big swipeable photos, short text lines, one rose accent, rounded-rectangle buttons, round search pill with a category icon row.
 
 - **Source of truth:** `apps/mobile/src/theme/` — use tokens, never raw hex in components. Light + dark are both first-class.
-- **Type:** Outfit only (400/500/600/700), sentence case; wordmark is Outfit bold, uppercase, tracked. Scale 12.5 / 14 / 16 / 17 / 18 / 24 / 30 / 36. Prices use `price` / `priceLg` (tabular numbers, copper).
-- **Shape:** cards 24 with 6 px inset photo (radius 19), buttons/chips full pills, inputs 14. **Spacing:** 4-pt grid; screen gutter 20.
-- **Color roles:** `ink` primary CTA, `accent` copper for prices, active tab and the CTA arrow (`<Button arrow />`), `brand` forest only for verified/accept/online, `danger` for end/decline only.
+- **Type:** Plus Jakarta Sans only (closest open match to Airbnb Cereal), sentence case. Scale 12 / 13.5 / 15 / 18 / 22 / 26 / 30. Prices: `price` / `priceLg`, ink, tabular numbers.
+- **Shape:** photos and cards 16, buttons/inputs 12, search bar and chips full pills. **Spacing:** 4-pt grid; screen gutter 20. Dividers over boxes for settings and detail sections.
+- **Color roles:** `accent` rose = the one main action (`Button` primary), saved heart, active tab, unread dot. `ink` for selected chips/categories, map pins and secondary emphasis. `brand` green only for verified/online/accept. `danger` for end/decline only.
 - **Content rules:** ₹ lakh/crore (`formatInr`), always price-per-unit next to total, Indian units (acre, guntha, cent, sq ft, sq yd, hectare), locality → district → state, never survey numbers.
 - **Motion:** 200–250 ms ease-out, spring for sheets; ringing avatar pulses; respect Reduce Motion.
 

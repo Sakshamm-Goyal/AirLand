@@ -158,11 +158,11 @@ export default function MapTab() {
             >
               <View style={{ alignItems: 'center' }}>
                 <View style={[s.pin, on && s.pinOn]}>
-                  <Text variant="micro" color={on ? 'onPhoto' : 'ink'} style={{ fontVariant: ['tabular-nums'] }}>
+                  <Text variant="micro" color={on ? 'onInk' : 'ink'} style={{ fontVariant: ['tabular-nums'] }}>
                     {formatInr(l.priceInr).replace('₹ ', '₹')}
                   </Text>
                 </View>
-                <View style={[s.tip, on && { borderTopColor: c.accent }]} />
+                <View style={[s.tip, on && { borderTopColor: c.ink }]} />
               </View>
             </Marker>
           );
@@ -237,9 +237,7 @@ function MapCard({ l, width, on }: { l: Listing; width: number; on: boolean }) {
     >
       <Image source={l.images[0]} style={s.thumb} contentFit="cover" transition={200} recyclingKey={l.id} />
       <View style={{ flex: 1, gap: 4, justifyContent: 'center' }}>
-        <Text variant="price" color="accent">
-          {formatInr(l.priceInr)}
-        </Text>
+        <Text variant="priceLg">{formatInr(l.priceInr)}</Text>
         <PerUnitChip listing={l} />
         <Text variant="smallMedium" numberOfLines={1}>
           {l.title}
@@ -283,7 +281,7 @@ const useStyles = makeStyles(({ c, dark }) => ({
     borderColor: c.surface,
     ...shadow(dark),
   },
-  pinOn: { backgroundColor: c.accent, borderColor: c.accent, transform: [{ scale: 1.12 }] },
+  pinOn: { backgroundColor: c.ink, borderColor: c.ink, transform: [{ scale: 1.12 }] },
   tip: {
     width: 0,
     height: 0,
@@ -306,7 +304,7 @@ const useStyles = makeStyles(({ c, dark }) => ({
     borderColor: dark ? c.line : 'transparent',
     ...shadow(dark),
   },
-  cardOn: { borderColor: c.accent },
+  cardOn: { borderColor: c.ink },
   thumb: { width: 108, height: '100%', borderRadius: radius.md, backgroundColor: c.skeleton },
   empty: {
     position: 'absolute',

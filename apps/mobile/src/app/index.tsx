@@ -11,7 +11,7 @@ import { Button, Text } from '@/components/ui';
 import { font, gutter } from '@/theme';
 
 // Same photo library as the seed listings; the vector art underneath shows until it loads (or if offline).
-const HERO = 'https://picsum.photos/id/255/1080/1800';
+const HERO = 'https://picsum.photos/id/18/1080/1800';
 
 const POINTS = [
   { icon: Lock, text: 'Number hidden' },
@@ -59,15 +59,14 @@ export default function Welcome() {
           ))}
         </Animated.View>
         <Animated.View entering={FadeInDown.delay(240).duration(500)} style={{ gap: 6 }}>
+          <Button title="Create an account" onPress={() => router.push('/sign-up')} />
           <Button
-            title="Create an account"
-            kind="secondary"
-            arrow
-            textColor="#121212"
-            onPress={() => router.push('/sign-up')}
-            style={{ backgroundColor: '#fff', borderWidth: 0 }}
+            title="Log in"
+            kind="ghost"
+            textColor="#fff"
+            onPress={() => router.push('/sign-in')}
+            style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' }}
           />
-          <Button title="I already have an account" kind="ghost" textColor="#fff" onPress={() => router.push('/sign-in')} />
         </Animated.View>
       </View>
     </View>

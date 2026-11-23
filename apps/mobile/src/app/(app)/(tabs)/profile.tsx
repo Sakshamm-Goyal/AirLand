@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { queryClient, useBlocks, useMyListings, useSetBlocked, useUpdateMe } from '@/lib/queries';
 import { useSession } from '@/lib/session';
 import { closeSocket } from '@/lib/socket';
-import { gutter, makeStyles, radius, useTheme } from '@/theme';
+import { gutter, makeStyles, radius, shadow, useTheme } from '@/theme';
 
 export default function Profile() {
   const s = useStyles();
@@ -36,18 +36,18 @@ export default function Profile() {
       style={{ backgroundColor: c.bg }}
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: gutter, paddingBottom: 40, gap: 20 }}
     >
-      <Text variant="display">You</Text>
+      <Text variant="display">Profile</Text>
 
-      <View style={s.card}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <Avatar name={user.name} uri={user.avatarUrl} size={64} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text variant="h1">{user.name}</Text>
-            <RoleBadge role={user.role} verified={user.verified} />
-            <Text variant="small" color="muted">
-              {user.email}
-            </Text>
-          </View>
+      <View style={s.profile}>
+        <View style={{ alignItems: 'center', gap: 6 }}>
+          <Avatar name={user.name} uri={user.avatarUrl} size={88} />
+          <Text variant="title" style={{ marginTop: 6 }}>
+            {user.name}
+          </Text>
+          <RoleBadge role={user.role} verified={user.verified} />
+          <Text variant="small" color="muted">
+            {user.email}
+          </Text>
         </View>
         {user.role === 'broker' && user.reraId ? (
           <View style={s.note}>
@@ -59,7 +59,7 @@ export default function Profile() {
         ) : null}
         <View style={s.note}>
           <Lock size={16} color={c.brand} />
-          <Text variant="small" color="inkSoft" style={{ flex: 1 }}>
+          <Text variant="small" color="inkSoft" style={{ flexShrink: 1 }}>
             {user.phone ? 'Your phone number is hidden from everyone.' : 'No phone number on file. People reach you in the app.'}
           </Text>
         </View>
@@ -88,7 +88,7 @@ export default function Profile() {
 
       <View style={{ gap: 8 }}>
         <Text variant="h1">Privacy</Text>
-        <View style={s.card}>
+        <View style={s.list}>
           <Toggle
             icon={<PhoneCall size={20} color={c.inkSoft} />}
             title="Allow calls"
@@ -110,7 +110,7 @@ export default function Profile() {
       {blocks.length ? (
         <View style={{ gap: 8 }}>
           <Text variant="h1">Blocked people</Text>
-          <View style={s.card}>
+          <View style={s.list}>
             {blocks.map((u, i) => (
               <View key={u.id} style={{ gap: 14 }}>
                 {i ? <Divider /> : null}
@@ -165,7 +165,7 @@ function Toggle({
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ true: c.brand, false: c.line }}
+        trackColor={{ true: c.ink, false: c.line }}
         thumbColor="#fff"
         accessibilityLabel={title}
       />
@@ -204,8 +204,25 @@ function MiniListing({ l }: { l: Listing }) {
   );
 }
 
-const useStyles = makeStyles(({ c }) => ({
-  card: { backgroundColor: c.surface, borderRadius: radius.lg, padding: 16, gap: 14, borderWidth: 1, borderColor: c.line },
-  note: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.brandSoft, padding: 10, borderRadius: radius.sm },
+const useStyles = makeStyles(({ c, dark }) => ({
+  profile: {
+    backgroundColor: c.surface,
+    borderRadius: 24,
+    padding: 24,
+    gap: 16,
+    borderWidth: dark ? 1 : 0,
+    borderColor: c.line,
+    ...shadow(dark),
+  },
+  list: { gap: 16, paddingTop: 4 },
+  note: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: c.line,
+  },
   mini: { width: 190, borderRadius: radius.md, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: c.line },
 }));

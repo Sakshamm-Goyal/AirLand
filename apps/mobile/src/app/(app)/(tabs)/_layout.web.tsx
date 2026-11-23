@@ -1,5 +1,5 @@
 import { TabList, TabSlot, Tabs, TabTrigger, type TabTriggerSlotProps } from 'expo-router/ui';
-import { CircleUser, LayoutGrid, type LucideIcon, Map as MapIcon, MessagesSquare, Phone } from 'lucide-react-native';
+import { CircleUser, type LucideIcon, Map as MapIcon, MessagesSquare, Phone, Search } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui';
@@ -22,7 +22,7 @@ export default function TabsLayout() {
       <TabSlot style={{ flexShrink: 1, minHeight: 0 }} />
       <TabList style={[st.bar, { paddingBottom: 8 + insets.bottom }]}>
         <TabTrigger name="explore" href="/explore" asChild>
-          <Tab icon={LayoutGrid} label="Explore" />
+          <Tab icon={Search} label="Explore" />
         </TabTrigger>
         <TabTrigger name="map" href="/map" asChild>
           <Tab icon={MapIcon} label="Map" />
@@ -59,11 +59,11 @@ function Tab({
       accessibilityLabel={badge ? `${label}, ${badge} unread` : label}
       style={st.tab}
     >
-      <View style={[st.pill, isFocused && { backgroundColor: c.accentSoft }]}>
-        <Icon size={22} color={isFocused ? c.accent : c.muted} strokeWidth={isFocused ? 2.4 : 2} />
+      <View style={st.pill}>
+        <Icon size={24} color={isFocused ? c.accent : c.muted} strokeWidth={isFocused ? 2.2 : 1.8} />
         {badge > 0 ? (
           <View style={st.badge}>
-            <Text variant="micro" color="onInk" style={st.badgeText}>
+            <Text variant="micro" color="onPhoto" style={st.badgeText}>
               {badge > 99 ? '99+' : badge}
             </Text>
           </View>
@@ -84,8 +84,8 @@ const useStyles = makeStyles(({ c }) => ({
     borderTopColor: c.line,
     paddingTop: 8,
   },
-  tab: { flex: 1, alignItems: 'center', gap: 4, minHeight: 56 },
-  pill: { width: 64, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 52 },
+  pill: { width: 48, height: 28, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',
     top: -2,
@@ -94,7 +94,7 @@ const useStyles = makeStyles(({ c }) => ({
     height: 18,
     paddingHorizontal: 5,
     borderRadius: 9,
-    backgroundColor: c.brand,
+    backgroundColor: c.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },

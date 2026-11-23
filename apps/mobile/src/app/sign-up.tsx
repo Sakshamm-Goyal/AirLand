@@ -32,7 +32,7 @@ export default function SignUp() {
     <FormScreen
       title="Join LandConnect"
       subtitle="Pick how you'll use the app. You can't change this later."
-      footer={<Button title="Create account" arrow onPress={submit} loading={signUp.isPending} />}
+      footer={<Button title="Create account" onPress={submit} loading={signUp.isPending} />}
     >
       <Controller
         control={control}

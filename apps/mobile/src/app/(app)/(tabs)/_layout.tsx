@@ -13,16 +13,16 @@ export default function TabsLayout() {
       backgroundColor={c.surface}
       tintColor={c.accent}
       iconColor={{ default: c.muted, selected: c.accent }}
-      indicatorColor={c.accentSoft}
-      badgeBackgroundColor={c.brand}
+      indicatorColor="transparent"
+      badgeBackgroundColor={c.accent}
       labelStyle={{
-        default: { color: c.muted, fontFamily: font.medium, fontSize: 11 },
-        selected: { color: c.accent, fontFamily: font.semibold, fontSize: 11 },
+        default: { color: c.muted, fontFamily: font.medium, fontSize: 11.5 },
+        selected: { color: c.accent, fontFamily: font.semibold, fontSize: 11.5 },
       }}
     >
       <NativeTabs.Trigger name="explore">
         <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'square.grid.2x2', selected: 'square.grid.2x2.fill' }} md="grid_view" />
+        <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="map">
         <NativeTabs.Trigger.Label>Map</NativeTabs.Trigger.Label>

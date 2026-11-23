@@ -33,7 +33,7 @@ async function newUser(browser: Browser, who: { name: string; email: string }, r
   await page.getByLabel('Email').fill(who.email);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByText(/Find land/)).toBeVisible();
+  await expect(page.getByLabel('Search listings')).toBeVisible();
   return page;
 }
 
@@ -82,7 +82,7 @@ test('seller lists land with a photo, price preview and location', async () => {
 test('buyer finds the listing by search, sees no phone number, and starts a chat', async () => {
   await b.getByLabel('Search listings').fill(run);
   await b
-    .getByRole('button', { name: new RegExp(title) })
+    .getByRole('button', { name: new RegExp(`^${title}`) })
     .first()
     .click();
   await visible(b, 'Phone hidden');
@@ -99,7 +99,7 @@ test('buyer finds the listing by search, sees no phone number, and starts a chat
 test('seller sees the enquiry live and replies', async () => {
   await s.goto('/chats');
   await visible(s, buyer.name);
-  await visible(s, `re: ${title}`);
+  await visible(s, title);
   await s.getByText(buyer.name).click();
   await visible(s, 'Is the price negotiable?');
   await s.getByLabel('Message').fill('Yes, a little. Come on Saturday.');
@@ -163,7 +163,7 @@ test('owner edits the listing and marks it sold; it leaves the buyer feed', asyn
   await b.getByLabel('Search listings').fill(run);
   await visible(b, 'No land matches');
   // …but the buyer's Saved list keeps it, marked Sold.
-  await b.getByRole('button', { name: 'Saved' }).click();
+  await b.getByRole('button', { name: 'Saved', exact: true }).click();
   await expect(b.getByRole('button', { name: new RegExp(`^${title} \\(price reduced\\)`) })).toBeVisible();
   await visible(b, 'Sold');
 });

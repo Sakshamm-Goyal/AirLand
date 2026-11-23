@@ -350,9 +350,7 @@ function Bubble({
             accessibilityLabel={missed && !mine ? 'Call back' : 'Call again'}
             hitSlop={6}
           >
-            <Text variant="micro" color="brand">
-              {missed && !mine ? 'Call back' : 'Call again'}
-            </Text>
+            <Text variant="micro">{missed && !mine ? 'Call back' : 'Call again'}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -439,7 +437,7 @@ const useStyles = makeStyles(({ c }) => ({
     paddingVertical: 10,
     borderRadius: radius.full,
   },
-  callBack: { marginLeft: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.full, backgroundColor: c.brandSoft },
+  callBack: { marginLeft: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.full, borderWidth: 1, borderColor: c.ink },
   bubble: { paddingHorizontal: 14, paddingTop: 9, paddingBottom: 6, borderRadius: 18, gap: 2 },
   out: { backgroundColor: c.bubbleOut, borderBottomRightRadius: 6 },
   in: { backgroundColor: c.bubbleIn, borderBottomLeftRadius: 6, borderWidth: 1, borderColor: c.line },

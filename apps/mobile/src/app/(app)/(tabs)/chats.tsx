@@ -2,10 +2,11 @@ import type { Conversation } from '@landconnect/shared';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Lock, MessagesSquare, Phone, Plus, Users, Video } from 'lucide-react-native';
+import { MessagesSquare, Phone, Plus, Users, Video } from 'lucide-react-native';
+import { useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Avatar, Button, EmptyState, Skeleton, Text } from '@/components/ui';
+import { Avatar, Button, Chip, EmptyState, Skeleton, Text } from '@/components/ui';
 import { convTitle, peerOf } from '@/lib/conversation';
 import { useConversations } from '@/lib/queries';
 import { usePresence, useTyping } from '@/lib/realtime';
@@ -18,15 +19,16 @@ export default function Chats() {
   const insets = useSafeAreaInsets();
   const q = useConversations();
   const canRoom = useSession((st) => st.user?.role !== 'buyer');
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const data = (q.data ?? []).filter((x) => !unreadOnly || x.unread > 0);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <FlashList
-        data={q.data ?? []}
+        data={data}
         keyExtractor={(x) => x.id}
         renderItem={({ item }) => <Row conv={item} />}
-        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: c.line, marginLeft: gutter + 66 }} />}
         ListHeaderComponent={
-          <View style={{ paddingTop: insets.top + 8, paddingHorizontal: gutter, paddingBottom: 12, gap: 6 }}>
+          <View style={{ paddingTop: insets.top + 12, paddingHorizontal: gutter, paddingBottom: 8, gap: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text variant="display" style={{ flex: 1 }}>
                 Chats
@@ -35,11 +37,9 @@ export default function Chats() {
                 <Button title="Deal room" icon={Plus} size="md" kind="secondary" onPress={() => router.push('/room/new')} />
               ) : null}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Lock size={13} color={c.brand} />
-              <Text variant="small" color="muted">
-                Numbers stay private. Chat and call right here.
-              </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Chip label="All" selected={!unreadOnly} onPress={() => setUnreadOnly(false)} />
+              <Chip label="Unread" selected={unreadOnly} onPress={() => setUnreadOnly(true)} />
             </View>
           </View>
         }
@@ -50,11 +50,13 @@ export default function Chats() {
                 <Skeleton key={i} style={{ height: 64 }} />
               ))}
             </View>
+          ) : unreadOnly ? (
+            <EmptyState icon={MessagesSquare} title="You're all caught up" body="No unread messages." />
           ) : (
             <EmptyState
               icon={MessagesSquare}
               title="No conversations yet"
-              body="Open a listing and tap Chat to ask the owner a question."
+              body="Open a listing and tap Chat to ask the owner a question. Your number stays private."
             />
           )
         }
@@ -74,6 +76,7 @@ function Row({ conv }: { conv: Conversation }) {
   const last = conv.lastMessage;
   const preview = typing ? 'typing…' : last ? `${last.senderId === me ? 'You: ' : ''}${last.body}` : 'Say hello';
   const CallIcon = last?.kind === 'call' ? ((last.meta as { kind?: string })?.kind === 'video' ? Video : Phone) : null;
+  const unread = conv.unread > 0;
 
   return (
     <Pressable
@@ -81,71 +84,63 @@ function Row({ conv }: { conv: Conversation }) {
       style={({ pressed }) => [s.row, pressed && { backgroundColor: c.surfaceAlt }]}
       accessibilityRole="button"
     >
-      <View>
+      <View style={{ width: 64, height: 64 }}>
         {conv.kind === 'room' ? (
           <View style={s.roomIcon}>
-            <Users size={22} color={c.brand} />
+            <Users size={24} color={c.ink} />
           </View>
+        ) : conv.listing?.image ? (
+          <>
+            <Image source={conv.listing.image} style={s.thumb} contentFit="cover" transition={200} recyclingKey={conv.id} />
+            <View style={s.avatarRing}>
+              <Avatar name={peer.name} uri={peer.avatarUrl} size={28} />
+            </View>
+          </>
         ) : (
-          <Avatar name={peer.name} uri={peer.avatarUrl} size={52} />
+          <Avatar name={peer.name} uri={peer.avatarUrl} size={56} />
         )}
         {online && conv.kind === 'direct' ? <View style={s.online} /> : null}
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text variant={conv.unread ? 'h2' : 'bodyMedium'} numberOfLines={1} style={{ flex: 1 }}>
+          <Text variant="h2" numberOfLines={1} style={{ flex: 1 }}>
             {convTitle(conv, me)}
           </Text>
-          <Text variant="small" color={conv.unread ? 'brand' : 'muted'}>
+          <Text variant="small" color="muted">
             {last ? chatTime(last.createdAt) : ''}
           </Text>
         </View>
-        {conv.listing ? (
-          <Text variant="micro" color="accent" numberOfLines={1}>
-            re: {conv.listing.title}
-          </Text>
-        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {CallIcon ? <CallIcon size={14} color={c.muted} /> : null}
           <Text
-            variant={conv.unread ? 'smallMedium' : 'small'}
-            color={typing ? 'brand' : conv.unread ? 'ink' : 'muted'}
+            variant={unread ? 'smallMedium' : 'small'}
+            color={typing ? 'brand' : unread ? 'ink' : 'muted'}
             numberOfLines={1}
             style={{ flex: 1 }}
           >
             {preview}
           </Text>
-          {conv.unread ? (
-            <View style={s.badge}>
-              <Text variant="micro" color="onInk">
-                {conv.unread > 99 ? '99+' : conv.unread}
-              </Text>
-            </View>
-          ) : null}
+          {unread ? <View style={s.dot} accessibilityLabel={`${conv.unread} unread`} /> : null}
         </View>
+        {conv.listing ? (
+          <Text variant="small" color="muted" numberOfLines={1}>
+            {conv.listing.title}
+          </Text>
+        ) : null}
       </View>
-      {conv.listing?.image ? (
-        <Image
-          source={conv.listing.image}
-          style={s.thumb}
-          contentFit="cover"
-          transition={200}
-          recyclingKey={conv.id}
-          accessibilityLabel={`Plot: ${conv.listing.title}`}
-        />
-      ) : null}
     </Pressable>
   );
 }
 
 const useStyles = makeStyles(({ c }) => ({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: gutter, paddingVertical: 12 },
-  thumb: { width: 52, height: 52, borderRadius: 12, backgroundColor: c.skeleton },
-  roomIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: c.brandSoft, alignItems: 'center', justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: gutter, paddingVertical: 12 },
+  thumb: { width: 56, height: 56, borderRadius: 12, backgroundColor: c.skeleton },
+  avatarRing: { position: 'absolute', right: 0, bottom: 0, borderRadius: 16, borderWidth: 2, borderColor: c.bg },
+  roomIcon: { width: 56, height: 56, borderRadius: 12, backgroundColor: c.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   online: {
     position: 'absolute',
-    right: 1,
-    bottom: 1,
+    left: 44,
+    top: 0,
     width: 14,
     height: 14,
     borderRadius: 7,
@@ -153,13 +148,5 @@ const useStyles = makeStyles(({ c }) => ({
     borderWidth: 2,
     borderColor: c.bg,
   },
-  badge: {
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 6,
-    borderRadius: 11,
-    backgroundColor: c.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: c.accent },
 }));

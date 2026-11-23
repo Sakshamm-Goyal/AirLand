@@ -53,7 +53,7 @@ export default function Calls() {
         getItemType={(r) => r.type}
         renderItem={({ item }) =>
           item.type === 'header' ? (
-            <Text variant="label" color="muted" style={s.section}>
+            <Text variant="h2" style={s.section}>
               {item.title}
             </Text>
           ) : (
@@ -139,17 +139,17 @@ function CallRow({ e }: { e: CallLogEntry }) {
         icon={KindIcon}
         label={`Call ${e.peer.name} back`}
         variant="plain"
-        color={c.brand}
+        color={c.ink}
         size={46}
         onPress={() => calls.start(e.conversationId, e.kind, e.peer, null)}
-        style={{ backgroundColor: c.brandSoft }}
+        style={{ borderWidth: 1, borderColor: c.line }}
       />
     </View>
   );
 }
 
 const useStyles = makeStyles(({ c }) => ({
-  section: { paddingHorizontal: gutter, paddingTop: 18, paddingBottom: 6 },
+  section: { paddingHorizontal: gutter, paddingTop: 20, paddingBottom: 6, textTransform: 'none', letterSpacing: 0, fontSize: 15 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: gutter, paddingVertical: 10 },
   kind: {
     position: 'absolute',

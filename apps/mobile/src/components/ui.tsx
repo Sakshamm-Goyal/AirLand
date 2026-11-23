@@ -26,7 +26,8 @@ export function Text({ variant = 'body', color, style, ...p }: TextProps & { var
 }
 
 // ── Buttons ──────────────────────────────────────────────────────────────
-type ButtonKind = 'primary' | 'brand' | 'accent' | 'secondary' | 'ghost' | 'danger';
+/** primary = rose accent (the one main action), ink = black, secondary = outlined. */
+type ButtonKind = 'primary' | 'ink' | 'brand' | 'accent' | 'secondary' | 'ghost' | 'danger';
 
 export function Button({
   title,
@@ -43,7 +44,7 @@ export function Button({
   ...rest
 }: Omit<PressableProps, 'style' | 'children'> & {
   textColor?: string;
-  /** Trailing copper circle with an arrow (the "Book now →" pill). */
+  /** Trailing arrow after the label. */
   arrow?: boolean;
   title: string;
   kind?: ButtonKind;
@@ -54,8 +55,18 @@ export function Button({
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
-  const bg = { primary: c.ink, brand: c.brand, accent: c.accent, secondary: c.surface, ghost: 'transparent', danger: c.danger }[kind];
-  const fg = textColor ?? { primary: c.onInk, brand: '#fff', accent: c.onInk, secondary: c.ink, ghost: c.ink, danger: '#fff' }[kind];
+  const bg = {
+    primary: c.accent,
+    ink: c.ink,
+    brand: c.brand,
+    accent: c.accent,
+    secondary: c.surface,
+    ghost: 'transparent',
+    danger: c.danger,
+  }[kind];
+  const fg =
+    textColor ??
+    { primary: c.onPhoto, ink: c.onInk, brand: c.onPhoto, accent: c.onPhoto, secondary: c.ink, ghost: c.ink, danger: c.onPhoto }[kind];
   const off = disabled || loading;
   return (
     <Pressable
@@ -69,18 +80,17 @@ export function Button({
       style={({ pressed }) => [
         {
           height: size === 'lg' ? 54 : 44,
-          paddingLeft: size === 'lg' ? 22 : 16,
-          paddingRight: arrow ? 6 : size === 'lg' ? 22 : 16,
-          borderRadius: radius.full,
+          paddingHorizontal: size === 'lg' ? 22 : 16,
+          borderRadius: radius.md,
           backgroundColor: bg,
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: arrow ? 'space-between' : 'center',
-          gap: arrow ? 14 : 8,
+          justifyContent: 'center',
+          gap: 8,
           opacity: off ? 0.5 : pressed ? 0.85 : 1,
           transform: [{ scale: pressed ? 0.98 : 1 }],
           borderWidth: kind === 'secondary' ? 1 : 0,
-          borderColor: c.line,
+          borderColor: c.ink,
         },
         style,
       ]}
@@ -88,20 +98,7 @@ export function Button({
     >
       {loading ? <ActivityIndicator color={fg} /> : Icon ? <Icon size={19} color={fg} strokeWidth={2.2} /> : null}
       <RNText style={[size === 'lg' ? type.h2 : type.smallMedium, { color: fg, fontFamily: font.semibold }]}>{title}</RNText>
-      {arrow ? (
-        <View
-          style={{
-            width: size === 'lg' ? 42 : 32,
-            height: size === 'lg' ? 42 : 32,
-            borderRadius: 21,
-            backgroundColor: c.accent,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <ArrowRight size={size === 'lg' ? 20 : 16} color={c.onInk} strokeWidth={2.4} />
-        </View>
-      ) : null}
+      {arrow ? <ArrowRight size={18} color={fg} strokeWidth={2.4} /> : null}
     </Pressable>
   );
 }
@@ -144,6 +141,9 @@ export function IconButton({
           borderWidth: variant === 'surface' ? 1 : 0,
           borderColor: c.line,
         },
+        variant === 'glass'
+          ? { shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 }
+          : null,
         style,
       ]}
     >
@@ -268,7 +268,7 @@ const useFieldStyles = makeStyles(({ c }) => ({
     minHeight: 52,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: c.line,
+    borderColor: c.muted,
     backgroundColor: c.surface,
     flexDirection: 'row',
     alignItems: 'center',

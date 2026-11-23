@@ -124,7 +124,10 @@ const MapView = forwardRef<unknown, Props>(function MapView(
           onWheel: (e: { deltaY: number }) => zoomBy(e.deltaY < 0 ? 1 : -1),
           onDoubleClick: () => zoomBy(1),
         },
-        <View style={[StyleSheet.absoluteFill, { filter: dark ? 'none' : 'sepia(0.22) saturate(1.15)' } as ViewStyle]} {...pan.panHandlers}>
+        <View
+          style={[StyleSheet.absoluteFill, { filter: dark ? 'none' : 'saturate(1.1) brightness(1.02)' } as ViewStyle]}
+          {...pan.panHandlers}
+        >
           {tiles}
         </View>,
       )}

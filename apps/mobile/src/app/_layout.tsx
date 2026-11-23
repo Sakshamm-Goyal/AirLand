@@ -1,8 +1,8 @@
 // Per-weight imports so only these 6 font files ship (the package index pulls in every weight).
-import { Outfit_400Regular } from '@expo-google-fonts/outfit/400Regular';
-import { Outfit_500Medium } from '@expo-google-fonts/outfit/500Medium';
-import { Outfit_600SemiBold } from '@expo-google-fonts/outfit/600SemiBold';
-import { Outfit_700Bold } from '@expo-google-fonts/outfit/700Bold';
+import { PlusJakartaSans_400Regular } from '@expo-google-fonts/plus-jakarta-sans/400Regular';
+import { PlusJakartaSans_500Medium } from '@expo-google-fonts/plus-jakarta-sans/500Medium';
+import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
+import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { registerGlobals } from '@livekit/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -37,10 +37,10 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Outfit_400Regular,
-    Outfit_500Medium,
-    Outfit_600SemiBold,
-    Outfit_700Bold,
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
   });
   const status = useSession((s) => s.status);
   const { c, dark } = useTheme();

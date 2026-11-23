@@ -28,7 +28,7 @@ export default function SignIn() {
     <FormScreen
       title="Welcome back"
       subtitle="Sign in to continue your land conversations."
-      footer={<Button title="Sign in" arrow onPress={submit} loading={signIn.isPending} />}
+      footer={<Button title="Sign in" onPress={submit} loading={signIn.isPending} />}
     >
       <Controller
         control={control}

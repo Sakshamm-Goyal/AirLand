@@ -3,31 +3,31 @@ import { type ImageStyle, StyleSheet, type TextStyle, useColorScheme, type ViewS
 type NamedStyles = Record<string, ViewStyle | TextStyle | ImageStyle>;
 
 /**
- * "Earthy premium": warm paper, near-black ink CTAs, copper for money, forest for trust.
- * Every color in the app comes from here. Light and dark are both first-class.
+ * Airbnb-like: pure white canvas, near-black text, one rose accent for the primary action, heart and active tab.
+ * Big photos carry the colour. Every color in the app comes from here. Light and dark are both first-class.
  */
 const light = {
-  bg: '#F7F6F3',
+  bg: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceAlt: '#F0EEE9',
-  ink: '#121212',
-  inkSoft: '#3A403C',
-  muted: '#6F766F',
-  line: '#E7E4DD',
+  surfaceAlt: '#F7F7F7',
+  ink: '#222222',
+  inkSoft: '#484848',
+  muted: '#6A6A6A',
+  line: '#EBEBEB',
   onInk: '#FFFFFF',
-  brand: '#1C6A4E',
-  brandSoft: '#E1EFE7',
-  accent: '#B85F31',
-  accentSoft: '#F8E7DC',
-  ok: '#1E9E5E',
-  danger: '#D23B3B',
-  dangerSoft: '#FBE4E2',
-  overlay: 'rgba(10,14,12,0.55)',
-  glass: 'rgba(255,255,255,0.86)',
-  bubbleOut: '#1C3D30',
-  bubbleOutText: '#F3F6F2',
-  bubbleIn: '#FFFFFF',
-  skeleton: '#E9E5DC',
+  brand: '#0F7B5F',
+  brandSoft: '#E6F4EF',
+  accent: '#E31C5F',
+  accentSoft: '#FFF0F4',
+  ok: '#008A05',
+  danger: '#C13515',
+  dangerSoft: '#FEF0EC',
+  overlay: 'rgba(0,0,0,0.5)',
+  glass: 'rgba(255,255,255,0.94)',
+  bubbleOut: '#222222',
+  bubbleOutText: '#FFFFFF',
+  bubbleIn: '#F2F2F2',
+  skeleton: '#EFEFEF',
   // Text and chips laid over photos: same in both themes (photos don't change with the theme).
   onPhoto: '#FFFFFF',
   onPhotoSoft: 'rgba(255,255,255,0.82)',
@@ -35,28 +35,27 @@ const light = {
 };
 
 const dark: typeof light = {
-  bg: '#0E0F0F',
-  surface: '#181919',
-  surfaceAlt: '#212222',
-  ink: '#F1F0EB',
-  inkSoft: '#C9CCC6',
-  muted: '#8D948E',
-  line: '#272D2A',
-  onInk: '#0D100F',
-  brand: '#43A97E',
-  brandSoft: '#173226',
-  accent: '#E5915F',
-  accentSoft: '#3B2419',
+  bg: '#121212',
+  surface: '#1C1C1C',
+  surfaceAlt: '#262626',
+  ink: '#F5F5F5',
+  inkSoft: '#D0D0D0',
+  muted: '#A3A3A3',
+  line: '#2F2F2F',
+  onInk: '#121212',
+  brand: '#3CC79A',
+  brandSoft: '#14302A',
+  accent: '#E8285F',
+  accentSoft: '#3A1524',
   ok: '#3CC983',
-  danger: '#F06060',
-  dangerSoft: '#3A1B1B',
+  danger: '#FF6B57',
+  dangerSoft: '#3A1D18',
   overlay: 'rgba(0,0,0,0.6)',
-  glass: 'rgba(22,26,24,0.82)',
-  bubbleOut: '#2B6B50',
-  bubbleOutText: '#F3F6F2',
-  bubbleIn: '#1E2321',
-  skeleton: '#1E2321',
-  // Text and chips laid over photos: same in both themes (photos don't change with the theme).
+  glass: 'rgba(28,28,28,0.92)',
+  bubbleOut: '#F5F5F5',
+  bubbleOutText: '#121212',
+  bubbleIn: '#262626',
+  skeleton: '#262626',
   onPhoto: '#FFFFFF',
   onPhotoSoft: 'rgba(255,255,255,0.82)',
   photoGlass: 'rgba(255,255,255,0.2)',
@@ -65,28 +64,28 @@ const dark: typeof light = {
 export type Colors = typeof light;
 
 export const font = {
-  // Outfit everywhere: geometric, clean at display sizes, readable as body text.
-  display: 'Outfit_600SemiBold',
-  body: 'Outfit_400Regular',
-  medium: 'Outfit_500Medium',
-  semibold: 'Outfit_600SemiBold',
-  bold: 'Outfit_700Bold',
+  // Plus Jakarta Sans everywhere: the closest open-source match to Airbnb's Cereal.
+  display: 'PlusJakartaSans_700Bold',
+  body: 'PlusJakartaSans_400Regular',
+  medium: 'PlusJakartaSans_500Medium',
+  semibold: 'PlusJakartaSans_600SemiBold',
+  bold: 'PlusJakartaSans_700Bold',
 } as const;
 
 export const type = {
-  hero: { fontFamily: font.display, fontSize: 36, lineHeight: 40, letterSpacing: -1 },
-  display: { fontFamily: font.display, fontSize: 30, lineHeight: 35, letterSpacing: -0.7 },
-  title: { fontFamily: font.display, fontSize: 24, lineHeight: 29, letterSpacing: -0.4 },
-  h1: { fontFamily: font.display, fontSize: 18, lineHeight: 23, letterSpacing: -0.2 },
-  h2: { fontFamily: font.semibold, fontSize: 17, lineHeight: 22 },
-  body: { fontFamily: font.body, fontSize: 16, lineHeight: 22 },
-  bodyMedium: { fontFamily: font.medium, fontSize: 16, lineHeight: 22 },
-  small: { fontFamily: font.body, fontSize: 14, lineHeight: 19 },
-  smallMedium: { fontFamily: font.medium, fontSize: 14, lineHeight: 19 },
-  micro: { fontFamily: font.medium, fontSize: 12.5, lineHeight: 16 },
-  label: { fontFamily: font.semibold, fontSize: 11, lineHeight: 14, letterSpacing: 0.8, textTransform: 'uppercase' },
-  price: { fontFamily: font.semibold, fontSize: 20, lineHeight: 25, letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
-  priceLg: { fontFamily: font.semibold, fontSize: 26, lineHeight: 31, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  hero: { fontFamily: font.display, fontSize: 30, lineHeight: 36, letterSpacing: -0.6 },
+  display: { fontFamily: font.display, fontSize: 26, lineHeight: 32, letterSpacing: -0.5 },
+  title: { fontFamily: font.semibold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 },
+  h1: { fontFamily: font.semibold, fontSize: 18, lineHeight: 24, letterSpacing: -0.2 },
+  h2: { fontFamily: font.semibold, fontSize: 15, lineHeight: 20 },
+  body: { fontFamily: font.body, fontSize: 15, lineHeight: 22 },
+  bodyMedium: { fontFamily: font.medium, fontSize: 15, lineHeight: 22 },
+  small: { fontFamily: font.body, fontSize: 13.5, lineHeight: 19 },
+  smallMedium: { fontFamily: font.medium, fontSize: 13.5, lineHeight: 19 },
+  micro: { fontFamily: font.semibold, fontSize: 12, lineHeight: 16 },
+  label: { fontFamily: font.semibold, fontSize: 11, lineHeight: 14, letterSpacing: 0.6, textTransform: 'uppercase' },
+  price: { fontFamily: font.semibold, fontSize: 15, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  priceLg: { fontFamily: font.bold, fontSize: 20, lineHeight: 26, fontVariant: ['tabular-nums'] },
 } satisfies Record<string, TextStyle>;
 
 export type TypeVariant = keyof typeof type;
@@ -94,7 +93,7 @@ export type TypeVariant = keyof typeof type;
 /** Bottom-up darkening behind text laid over photos. */
 export const scrim = ['rgba(8,12,10,0)', 'rgba(8,12,10,0.78)'] as const;
 
-export const radius = { sm: 10, md: 14, lg: 20, xl: 28, full: 999 } as const;
+export const radius = { sm: 8, md: 12, lg: 16, xl: 24, full: 999 } as const;
 export const gutter = 20;
 
 export const themes = { light: { c: light, dark: false }, dark: { c: dark, dark: true } } as const;
@@ -115,4 +114,4 @@ export function makeStyles<S extends NamedStyles>(fn: (t: Theme) => S & NamedSty
 }
 
 export const shadow = (dark: boolean) =>
-  dark ? {} : { shadowColor: '#1A1612', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 };
+  dark ? {} : { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 4 };

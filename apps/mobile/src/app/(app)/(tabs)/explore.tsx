@@ -1,16 +1,33 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import { LAND_TYPES, type LandType, type Listing } from '@landconnect/shared';
+import type { LandType, Listing } from '@landconnect/shared';
 import { FlashList } from '@shopify/flash-list';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { Heart, Plus, Search, SearchX, SlidersHorizontal, X } from 'lucide-react-native';
+import {
+  Factory,
+  Heart,
+  House,
+  LandPlot,
+  LayoutGrid,
+  type LucideIcon,
+  Map as MapIcon,
+  Plus,
+  Search,
+  SearchX,
+  SlidersHorizontal,
+  Store,
+  Trees,
+  Wheat,
+  X,
+} from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LAND_TYPE_LABEL, ListingCard } from '@/components/ListingCard';
-import { Avatar, Button, Chip, EmptyState, IconButton, Skeleton, Text } from '@/components/ui';
+import { ListingCard } from '@/components/ListingCard';
+import { Button, Chip, EmptyState, IconButton, Skeleton, Text } from '@/components/ui';
 import { type Filters, useListings } from '@/lib/queries';
 import { useSession } from '@/lib/session';
-import { font, gutter, makeStyles, radius, type, useTheme } from '@/theme';
+import { gutter, makeStyles, radius, shadow, type, useTheme } from '@/theme';
 
 const PRICE_BANDS: { label: string; min?: number; max?: number }[] = [
   { label: 'Any price' },
@@ -20,10 +37,18 @@ const PRICE_BANDS: { label: string; min?: number; max?: number }[] = [
   { label: 'Above ₹ 5 Cr', min: 50_000_000 },
 ];
 
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
+/** Airbnb-style category bar: icon over label, underline on the selected one. */
+type Category = { key: string; label: string; icon: LucideIcon; type?: LandType; saved?: boolean };
+const CATEGORIES: Category[] = [
+  { key: 'all', label: 'All', icon: LayoutGrid },
+  { key: 'saved', label: 'Saved', icon: Heart, saved: true },
+  { key: 'agricultural', label: 'Farmland', icon: Wheat, type: 'agricultural' },
+  { key: 'residential', label: 'Plots', icon: LandPlot, type: 'residential' },
+  { key: 'farmhouse', label: 'Farmhouse', icon: House, type: 'farmhouse' },
+  { key: 'plantation', label: 'Plantation', icon: Trees, type: 'plantation' },
+  { key: 'commercial', label: 'Commercial', icon: Store, type: 'commercial' },
+  { key: 'industrial', label: 'Industrial', icon: Factory, type: 'industrial' },
+];
 
 export default function Explore() {
   const s = useStyles();
@@ -33,10 +58,8 @@ export default function Explore() {
   const [text, setText] = useState('');
   const [filters, setFilters] = useState<Filters>({});
   const [band, setBand] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
   const sheet = useRef<BottomSheetModal>(null);
-  // Extended FAB shrinks to an icon while scrolling down (Material pattern) so it never sits on card text.
-  const [compactFab, setCompactFab] = useState(false);
-  const lastY = useRef(0);
 
   // Debounced search: one request after typing pauses.
   useEffect(() => {
@@ -47,93 +70,89 @@ export default function Explore() {
   const q = useListings(filters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
   const canList = user.role !== 'buyer';
-  const browsing = Boolean(filters.q || filters.type || filters.saved || filters.minPrice || filters.maxPrice);
-
-  const header = (
-    <View style={{ paddingTop: insets.top + 10, gap: 18, paddingBottom: 14 }}>
-      <View style={[s.row, { paddingHorizontal: gutter }]}>
-        <Text style={s.wordmark}>LandConnect</Text>
-        <Pressable onPress={() => router.push('/profile')} accessibilityLabel="Your profile" hitSlop={6}>
-          <Avatar name={user.name} uri={user.avatarUrl} size={40} />
-        </Pressable>
-      </View>
-      <View style={{ paddingHorizontal: gutter, gap: 8 }}>
-        <Text variant="hero">Find land{'\n'}worth owning</Text>
-        <Text variant="small" color="muted">
-          {greeting()}, {user.name.split(' ')[0]}. Talk to owners here; your number stays hidden.
-        </Text>
-      </View>
-      <View style={[s.row, { paddingHorizontal: gutter, gap: 10 }]}>
-        <View style={s.search}>
-          <Search size={19} color={c.muted} />
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder="Village, taluk or city"
-            placeholderTextColor={c.muted}
-            style={s.searchInput}
-            returnKeyType="search"
-            accessibilityLabel="Search listings"
-          />
-          {text ? <IconButton icon={X} label="Clear search" variant="plain" size={30} onPress={() => setText('')} /> : null}
-        </View>
-        <IconButton
-          icon={SlidersHorizontal}
-          label="Price filter"
-          variant={band ? 'ink' : 'surface'}
-          size={50}
-          onPress={() => sheet.current?.present()}
-        />
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: 8 }}>
-        <Chip
-          label="All"
-          selected={!filters.type && !filters.saved}
-          onPress={() => setFilters((f) => ({ ...f, type: undefined, saved: undefined }))}
-        />
-        <Chip
-          label="Saved"
-          icon={Heart}
-          selected={filters.saved === 'true'}
-          onPress={() => setFilters((f) => ({ ...f, saved: f.saved ? undefined : 'true' }))}
-        />
-        {LAND_TYPES.map((t: LandType) => (
-          <Chip
-            key={t}
-            label={LAND_TYPE_LABEL[t]}
-            selected={filters.type === t}
-            onPress={() => setFilters((f) => ({ ...f, type: f.type === t ? undefined : t }))}
-          />
-        ))}
-      </ScrollView>
-      {items.length ? (
-        <View style={[s.section, { paddingHorizontal: gutter }]}>
-          <Text variant="h1">{filters.saved ? 'Saved plots' : browsing ? 'Results' : 'Latest land'}</Text>
-          <Text variant="small" color="muted">
-            {items.length}
-            {q.hasNextPage ? '+' : ''} {items.length === 1 ? 'plot' : 'plots'}
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
+  const active = filters.saved ? 'saved' : (filters.type ?? 'all');
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <View style={[s.top, { paddingTop: insets.top + 10 }, scrolled && s.topScrolled]}>
+        <View style={s.searchRow}>
+          <View style={s.search}>
+            <Search size={20} color={c.ink} strokeWidth={2.4} />
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              placeholder="Search village, taluk or city"
+              placeholderTextColor={c.muted}
+              style={s.searchInput}
+              returnKeyType="search"
+              accessibilityLabel="Search listings"
+            />
+            {text ? <IconButton icon={X} label="Clear search" variant="plain" size={30} onPress={() => setText('')} /> : null}
+            <IconButton
+              icon={SlidersHorizontal}
+              label="Price filter"
+              variant={band ? 'ink' : 'surface'}
+              size={38}
+              onPress={() => sheet.current?.present()}
+            />
+          </View>
+          {canList ? (
+            <IconButton icon={Plus} label="List land" variant="ink" size={50} onPress={() => router.push('/listing/new')} />
+          ) : null}
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.cats}>
+          {CATEGORIES.map((cat) => {
+            const on = active === cat.key;
+            return (
+              <Pressable
+                key={cat.key}
+                accessibilityRole="button"
+                accessibilityLabel={cat.label}
+                accessibilityState={{ selected: on }}
+                onPress={() => {
+                  void Haptics.selectionAsync();
+                  setFilters((f) => ({ ...f, type: cat.type, saved: cat.saved ? 'true' : undefined }));
+                }}
+                style={[s.cat, on && s.catOn]}
+              >
+                <cat.icon size={24} color={on ? c.ink : c.muted} strokeWidth={on ? 2 : 1.6} />
+                <Text variant="micro" color={on ? 'ink' : 'muted'}>
+                  {cat.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       <FlashList<Listing>
         data={items}
         keyExtractor={(l) => l.id}
         renderItem={({ item }) => (
-          <View style={{ paddingHorizontal: gutter, paddingBottom: 16 }}>
+          <View style={{ paddingHorizontal: gutter, paddingBottom: 30 }}>
             <ListingCard listing={item} />
           </View>
         )}
-        ListHeaderComponent={header}
+        ListHeaderComponent={
+          items.length ? (
+            <Text variant="small" color="muted" style={{ paddingHorizontal: gutter, paddingTop: 16, paddingBottom: 14 }}>
+              {items.length}
+              {q.hasNextPage ? '+' : ''} {items.length === 1 ? 'plot' : 'plots'}
+              {filters.saved ? ' saved' : ''} · owners' numbers stay private
+            </Text>
+          ) : (
+            <View style={{ height: 16 }} />
+          )
+        }
         ListEmptyComponent={
           q.isPending ? (
-            <View style={{ paddingHorizontal: gutter, gap: 16 }}>
+            <View style={{ paddingHorizontal: gutter, gap: 12 }}>
               {[0, 1].map((i) => (
-                <Skeleton key={i} style={{ height: 340, borderRadius: radius.lg }} />
+                <View key={i} style={{ gap: 10, marginBottom: 20 }}>
+                  <Skeleton style={{ aspectRatio: 20 / 19, borderRadius: radius.lg }} />
+                  <Skeleton style={{ height: 16, width: '60%' }} />
+                  <Skeleton style={{ height: 14, width: '40%' }} />
+                </View>
               ))}
             </View>
           ) : q.isError ? (
@@ -154,30 +173,23 @@ export default function Explore() {
         refreshControl={
           <RefreshControl refreshing={q.isRefetching && !q.isFetchingNextPage} onRefresh={() => void q.refetch()} tintColor={c.muted} />
         }
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         keyboardDismissMode="on-drag"
-        onScroll={(e) => {
-          const y = e.nativeEvent.contentOffset.y;
-          if (Math.abs(y - lastY.current) > 12) setCompactFab(y > lastY.current && y > 80);
-          lastY.current = y;
-        }}
+        onScroll={(e) => setScrolled(e.nativeEvent.contentOffset.y > 4)}
         scrollEventThrottle={64}
       />
 
-      {canList ? (
-        compactFab ? (
-          <IconButton
-            icon={Plus}
-            label="List land"
-            variant="ink"
-            size={58}
-            onPress={() => router.push('/listing/new')}
-            style={[s.fab, { bottom: 24 }]}
-          />
-        ) : (
-          <Button title="List land" icon={Plus} onPress={() => router.push('/listing/new')} style={[s.fab, { bottom: 24 }]} />
-        )
-      ) : null}
+      <Pressable
+        onPress={() => router.push('/map')}
+        accessibilityRole="button"
+        accessibilityLabel="Show map"
+        style={({ pressed }) => [s.mapPill, { transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+      >
+        <Text variant="h2" color="onInk">
+          Map
+        </Text>
+        <MapIcon size={17} color={c.onInk} />
+      </Pressable>
 
       <BottomSheetModal
         ref={sheet}
@@ -205,23 +217,39 @@ export default function Explore() {
   );
 }
 
-const useStyles = makeStyles(({ c }) => ({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wordmark: { fontFamily: font.bold, fontSize: 15, letterSpacing: 2.5, textTransform: 'uppercase', color: c.ink },
-  section: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+const useStyles = makeStyles(({ c, dark }) => ({
+  top: { backgroundColor: c.bg, borderBottomWidth: 1, borderBottomColor: c.line, zIndex: 2 },
+  topScrolled: { ...shadow(dark), borderBottomColor: 'transparent' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: gutter },
   search: {
     flex: 1,
-    height: 50,
+    height: 56,
     borderRadius: radius.full,
     backgroundColor: c.surface,
-    borderWidth: 1,
+    borderWidth: dark ? 1 : 0,
     borderColor: c.line,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 8,
-    gap: 8,
+    paddingLeft: 20,
+    paddingRight: 9,
+    gap: 10,
+    ...shadow(dark),
   },
-  searchInput: { flex: 1, ...type.bodyMedium, color: c.ink },
-  fab: { position: 'absolute', right: gutter, paddingHorizontal: 20 },
+  searchInput: { flex: 1, ...type.h2, color: c.ink },
+  cats: { paddingHorizontal: gutter, gap: 26, paddingTop: 14 },
+  cat: { alignItems: 'center', gap: 6, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: 'transparent', minWidth: 48 },
+  catOn: { borderBottomColor: c.ink },
+  mapPill: {
+    position: 'absolute',
+    bottom: 18,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: c.ink,
+    paddingHorizontal: 20,
+    height: 48,
+    borderRadius: radius.full,
+    ...shadow(dark),
+  },
 }));
