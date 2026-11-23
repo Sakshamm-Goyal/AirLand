@@ -262,3 +262,34 @@ describe('editing and blocking', () => {
     expect((await sendMsg()).ok).toBe(true);
   });
 });
+
+describe('http', () => {
+  it('allows PATCH, PUT and DELETE in CORS preflight (web client)', async () => {
+    const res = await app.inject({
+      method: 'OPTIONS',
+      url: '/listings/x',
+      headers: { origin: 'http://localhost:8081', 'access-control-request-method': 'PATCH' },
+    });
+    const allowed = String(res.headers['access-control-allow-methods']);
+    for (const m of ['PATCH', 'PUT', 'DELETE']) expect(allowed).toContain(m);
+  });
+});
+
+it('shuts down promptly even with a live socket connected', async () => {
+  const other = await buildApp();
+  await other.listen({ port: 0, host: '127.0.0.1' });
+  const addr = other.server.address();
+  const port = typeof addr === 'object' && addr ? addr.port : 0;
+  const token = (await user('buyer')).accessToken;
+  const s: Client = connect(`http://127.0.0.1:${port}`, {
+    auth: { token },
+    transports: ['websocket'],
+    forceNew: true,
+    reconnection: false,
+  });
+  await new Promise((r) => s.on('connect', () => r(null)));
+  const started = Date.now();
+  await other.close();
+  expect(Date.now() - started).toBeLessThan(2000);
+  s.disconnect();
+});

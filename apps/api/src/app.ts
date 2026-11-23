@@ -44,7 +44,8 @@ export async function buildApp() {
 
   const origins = config.CORS_ORIGINS === '*' ? true : config.CORS_ORIGINS.split(',');
   await app.register(helmet);
-  await app.register(cors, { origin: origins });
+  // Default is GET/HEAD/POST only; browsers would block edit, save and delete.
+  await app.register(cors, { origin: origins, methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'] });
   await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' });
   await app.register(multipart);
   await app.register(swagger, {
@@ -67,7 +68,9 @@ export async function buildApp() {
   await app.register(uploadRoutes);
 
   const io = createRealtime(app.server, origins === true ? '*' : origins);
-  app.addHook('onClose', async () => {
+  // preClose, not onClose: the HTTP server won't finish closing while upgraded websockets are open,
+  // so sockets must be dropped first or shutdown (and every deploy) hangs.
+  app.addHook('preClose', async () => {
     await io.close();
   });
   return app;
