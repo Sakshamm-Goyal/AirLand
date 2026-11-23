@@ -57,6 +57,9 @@ test('seller and buyer sign up; only the seller can list land', async ({ browser
   b = await newUser(browser, buyer, 'Buyer');
   await expect(s.getByRole('button', { name: 'List land' })).toBeVisible();
   await expect(b.getByRole('button', { name: 'List land' })).toHaveCount(0);
+  // Tab bar sits at the bottom of the screen, like the Android app.
+  const tab = await b.getByRole('tab', { name: 'Explore' }).boundingBox();
+  expect(tab?.y).toBeGreaterThan((b.viewportSize()?.height ?? 0) - 120);
 });
 
 test('seller lists land with a photo, price preview and location', async () => {
