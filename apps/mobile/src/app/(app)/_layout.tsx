@@ -9,6 +9,7 @@ export default function AppLayout() {
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="listing/new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="listing/edit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
     </Stack>
   );
 }

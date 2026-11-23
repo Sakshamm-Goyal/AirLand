@@ -11,6 +11,7 @@ import {
   Lock,
   MapPin,
   MessageCircle,
+  Pencil,
   Phone,
   Ruler,
   Trash2,
@@ -259,7 +260,13 @@ function Detail({ l }: { l: Listing }) {
         {l.isMine ? (
           <>
             <Button
-              title={l.status === 'sold' ? 'Mark as available' : 'Mark as sold'}
+              title="Edit"
+              icon={Pencil}
+              kind="secondary"
+              onPress={() => router.push({ pathname: '/listing/edit', params: { id: l.id } })}
+            />
+            <Button
+              title={l.status === 'sold' ? 'Mark available' : 'Mark sold'}
               kind={l.status === 'sold' ? 'brand' : 'primary'}
               style={{ flex: 1 }}
               loading={update.isPending}
