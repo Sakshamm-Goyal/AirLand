@@ -80,6 +80,8 @@ API tests run against a real Postgres and real Socket.IO clients: auth and refre
 
 ## Docs
 
+- [docs/TECHNICAL.md](docs/TECHNICAL.md): technical documentation (technologies, architecture, decisions, challenges)
+- [docs/AI_USAGE.md](docs/AI_USAGE.md): how AI tools were used
 - [docs/PLAN.md](docs/PLAN.md): timeline and scope
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): system design, schema, events, call sequence
 - [docs/DECISIONS.md](docs/DECISIONS.md): competitor research and technology comparison (LiveKit vs Stream / Agora / ZEGOCLOUD / Jitsi / raw WebRTC)
