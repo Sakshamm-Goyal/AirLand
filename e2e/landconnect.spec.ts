@@ -33,7 +33,7 @@ async function newUser(browser: Browser, who: { name: string; email: string }, r
   await page.getByLabel('Email').fill(who.email);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByText('Find your land')).toBeVisible();
+  await expect(page.getByText(/Find land/)).toBeVisible();
   return page;
 }
 

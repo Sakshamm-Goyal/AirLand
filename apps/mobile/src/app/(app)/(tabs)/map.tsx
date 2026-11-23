@@ -158,11 +158,11 @@ export default function MapTab() {
             >
               <View style={{ alignItems: 'center' }}>
                 <View style={[s.pin, on && s.pinOn]}>
-                  <Text variant="micro" color={on ? 'onInk' : 'ink'} style={{ fontVariant: ['tabular-nums'] }}>
+                  <Text variant="micro" color={on ? 'onPhoto' : 'ink'} style={{ fontVariant: ['tabular-nums'] }}>
                     {formatInr(l.priceInr).replace('₹ ', '₹')}
                   </Text>
                 </View>
-                <View style={[s.tip, on && { borderTopColor: c.ink }]} />
+                <View style={[s.tip, on && { borderTopColor: c.accent }]} />
               </View>
             </Marker>
           );
@@ -237,7 +237,7 @@ function MapCard({ l, width, on }: { l: Listing; width: number; on: boolean }) {
     >
       <Image source={l.images[0]} style={s.thumb} contentFit="cover" transition={200} recyclingKey={l.id} />
       <View style={{ flex: 1, gap: 4, justifyContent: 'center' }}>
-        <Text variant="h1" style={{ fontVariant: ['tabular-nums'] }}>
+        <Text variant="price" color="accent">
           {formatInr(l.priceInr)}
         </Text>
         <PerUnitChip listing={l} />
@@ -275,7 +275,7 @@ const useStyles = makeStyles(({ c, dark }) => ({
     ...shadow(dark),
   },
   cluster: {
-    backgroundColor: c.brand,
+    backgroundColor: c.ink,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radius.full,
@@ -283,7 +283,7 @@ const useStyles = makeStyles(({ c, dark }) => ({
     borderColor: c.surface,
     ...shadow(dark),
   },
-  pinOn: { backgroundColor: c.ink, borderColor: c.ink, transform: [{ scale: 1.12 }] },
+  pinOn: { backgroundColor: c.accent, borderColor: c.accent, transform: [{ scale: 1.12 }] },
   tip: {
     width: 0,
     height: 0,
@@ -306,7 +306,7 @@ const useStyles = makeStyles(({ c, dark }) => ({
     borderColor: dark ? c.line : 'transparent',
     ...shadow(dark),
   },
-  cardOn: { borderColor: c.ink },
+  cardOn: { borderColor: c.accent },
   thumb: { width: 108, height: '100%', borderRadius: radius.md, backgroundColor: c.skeleton },
   empty: {
     position: 'absolute',

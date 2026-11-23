@@ -70,14 +70,14 @@ LiveKit SFU (WebRTC/UDP, TURN fallback built in) — one hop to the nearest edge
 - **Accessibility is part of done:** every icon-only button has `accessibilityLabel`; min 48 dp targets; respect font scaling (no fixed-height text containers); contrast ≥ 4.5:1.
 - Never edit `ios/` or `android/` (CNG). Native config goes through `app.json` plugins.
 
-## Design system ("earthy premium")
+## Design system ("luxury minimal")
 
-Inspired by editorial real-estate apps (dark ink CTAs + copper accent, full-bleed photography, generous radii), grounded in land: warm paper background, forest green brand, copper for prices.
+Chosen by the product owner from three mockups (`docs/design/directions.png`, option B): quiet off-white canvas, white cards with an inset photo, one info line per card, copper prices on the right, near-black pill CTAs with a copper arrow circle. Few badges, almost no shadow.
 
 - **Source of truth:** `apps/mobile/src/theme/` — use tokens, never raw hex in components. Light + dark are both first-class.
-- **Type:** Bricolage Grotesque (display: headings, prices) + Inter (body/UI). Scale 12 / 13 / 15 / 17 / 20 / 24 / 30. Prices use tabular numbers.
-- **Shape:** cards 20, buttons/inputs 14, chips/pills full. **Spacing:** 4-pt grid; screen gutter 20.
-- **Color roles:** `ink` primary CTA (near-black pill), `accent` copper for price-per-unit and highlights, `brand` forest for brand/verified/accept, `danger` for end/decline only.
+- **Type:** Outfit only (400/500/600/700), sentence case; wordmark is Outfit bold, uppercase, tracked. Scale 12.5 / 14 / 16 / 17 / 18 / 24 / 30 / 36. Prices use `price` / `priceLg` (tabular numbers, copper).
+- **Shape:** cards 24 with 6 px inset photo (radius 19), buttons/chips full pills, inputs 14. **Spacing:** 4-pt grid; screen gutter 20.
+- **Color roles:** `ink` primary CTA, `accent` copper for prices, active tab and the CTA arrow (`<Button arrow />`), `brand` forest only for verified/accept/online, `danger` for end/decline only.
 - **Content rules:** ₹ lakh/crore (`formatInr`), always price-per-unit next to total, Indian units (acre, guntha, cent, sq ft, sq yd, hectare), locality → district → state, never survey numbers.
 - **Motion:** 200–250 ms ease-out, spring for sheets; ringing avatar pulses; respect Reduce Motion.
 

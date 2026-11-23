@@ -12,6 +12,7 @@
       "!apps/mobile/scripts",
       "!**/dist",
       "!**/test-results",
+      "!**/.pnpm-store",
       "!**/playwright-report",
       "!**/*.md"
     ]

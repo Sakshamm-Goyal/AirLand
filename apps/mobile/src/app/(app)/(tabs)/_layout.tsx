@@ -11,13 +11,13 @@ export default function TabsLayout() {
   return (
     <NativeTabs
       backgroundColor={c.surface}
-      tintColor={c.ink}
-      iconColor={{ default: c.muted, selected: c.ink }}
-      indicatorColor={c.brandSoft}
+      tintColor={c.accent}
+      iconColor={{ default: c.muted, selected: c.accent }}
+      indicatorColor={c.accentSoft}
       badgeBackgroundColor={c.brand}
       labelStyle={{
         default: { color: c.muted, fontFamily: font.medium, fontSize: 11 },
-        selected: { color: c.ink, fontFamily: font.semibold, fontSize: 11 },
+        selected: { color: c.accent, fontFamily: font.semibold, fontSize: 11 },
       }}
     >
       <NativeTabs.Trigger name="explore">

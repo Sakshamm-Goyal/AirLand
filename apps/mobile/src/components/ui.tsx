@@ -1,7 +1,7 @@
 import type { Role } from '@landconnect/shared';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { BadgeCheck, type LucideIcon } from 'lucide-react-native';
+import { ArrowRight, BadgeCheck, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import {
@@ -39,9 +39,12 @@ export function Button({
   size = 'lg',
   haptic = true,
   textColor,
+  arrow,
   ...rest
 }: Omit<PressableProps, 'style' | 'children'> & {
   textColor?: string;
+  /** Trailing copper circle with an arrow (the "Book now →" pill). */
+  arrow?: boolean;
   title: string;
   kind?: ButtonKind;
   icon?: LucideIcon;
@@ -52,7 +55,7 @@ export function Button({
 }) {
   const { c } = useTheme();
   const bg = { primary: c.ink, brand: c.brand, accent: c.accent, secondary: c.surface, ghost: 'transparent', danger: c.danger }[kind];
-  const fg = textColor ?? { primary: c.onInk, brand: '#fff', accent: '#fff', secondary: c.ink, ghost: c.ink, danger: '#fff' }[kind];
+  const fg = textColor ?? { primary: c.onInk, brand: '#fff', accent: c.onInk, secondary: c.ink, ghost: c.ink, danger: '#fff' }[kind];
   const off = disabled || loading;
   return (
     <Pressable
@@ -66,13 +69,14 @@ export function Button({
       style={({ pressed }) => [
         {
           height: size === 'lg' ? 54 : 44,
-          paddingHorizontal: size === 'lg' ? 22 : 16,
+          paddingLeft: size === 'lg' ? 22 : 16,
+          paddingRight: arrow ? 6 : size === 'lg' ? 22 : 16,
           borderRadius: radius.full,
           backgroundColor: bg,
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
+          justifyContent: arrow ? 'space-between' : 'center',
+          gap: arrow ? 14 : 8,
           opacity: off ? 0.5 : pressed ? 0.85 : 1,
           transform: [{ scale: pressed ? 0.98 : 1 }],
           borderWidth: kind === 'secondary' ? 1 : 0,
@@ -84,6 +88,20 @@ export function Button({
     >
       {loading ? <ActivityIndicator color={fg} /> : Icon ? <Icon size={19} color={fg} strokeWidth={2.2} /> : null}
       <RNText style={[size === 'lg' ? type.h2 : type.smallMedium, { color: fg, fontFamily: font.semibold }]}>{title}</RNText>
+      {arrow ? (
+        <View
+          style={{
+            width: size === 'lg' ? 42 : 32,
+            height: size === 'lg' ? 42 : 32,
+            borderRadius: 21,
+            backgroundColor: c.accent,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ArrowRight size={size === 'lg' ? 20 : 16} color={c.onInk} strokeWidth={2.4} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }

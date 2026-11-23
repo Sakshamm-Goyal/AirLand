@@ -2,21 +2,21 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Lock, MessagesSquare, Sprout, Video } from 'lucide-react-native';
+import { Lock, MessagesSquare, Video } from 'lucide-react-native';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LandArt } from '@/components/LandArt';
 import { Button, Text } from '@/components/ui';
-import { gutter } from '@/theme';
+import { font, gutter } from '@/theme';
 
 // Same photo library as the seed listings; the vector art underneath shows until it loads (or if offline).
 const HERO = 'https://picsum.photos/id/255/1080/1800';
 
 const POINTS = [
-  { icon: Lock, text: 'Your phone number is never shown' },
-  { icon: MessagesSquare, text: 'Every chat is tied to a plot' },
-  { icon: Video, text: 'Voice and video calls in the app' },
+  { icon: Lock, text: 'Number hidden' },
+  { icon: MessagesSquare, text: 'Chat per plot' },
+  { icon: Video, text: 'In-app calls' },
 ];
 
 export default function Welcome() {
@@ -34,50 +34,40 @@ export default function Welcome() {
         locations={[0, 0.25, 0.5, 0.78]}
         style={StyleSheet.absoluteFill}
       />
-      <View style={[styles.brand, { top: insets.top + 16 }]}>
-        <View style={styles.logo}>
-          <Sprout size={18} color="#fff" />
-        </View>
-        <Text variant="h2" style={{ color: '#fff' }}>
-          LandConnect
-        </Text>
+      <View style={[styles.brand, { top: insets.top + 14 }]}>
+        <Text style={styles.wordmark}>LandConnect</Text>
       </View>
-      <View style={{ flex: 1, justifyContent: 'flex-end', paddingHorizontal: gutter, paddingBottom: insets.bottom + 20, gap: 22 }}>
-        <Animated.View entering={FadeInDown.duration(500)}>
-          <Text variant="label" style={{ color: '#E5B48C', marginBottom: 10 }}>
-            Farms, plots and farmhouses
+      <View style={{ flex: 1, justifyContent: 'flex-end', paddingHorizontal: gutter, paddingBottom: insets.bottom + 16, gap: 22 }}>
+        <Animated.View entering={FadeInDown.duration(500)} style={{ gap: 12 }}>
+          <Text variant="hero" style={{ color: '#fff', fontSize: 40, lineHeight: 44 }}>
+            Buy and sell land, privately.
           </Text>
-          <Text variant="hero" style={{ color: '#fff' }}>
-            Buy and sell land.{'\n'}Talk without sharing your number.
+          <Text variant="body" style={{ color: '#D5DAD6' }}>
+            Chat and call owners in the app. Your phone number is never shared.
           </Text>
         </Animated.View>
-        <Animated.View entering={FadeInDown.delay(120).duration(500)} style={{ gap: 10 }}>
+        <Animated.View entering={FadeInDown.delay(120).duration(500)} style={styles.tiles}>
           {POINTS.map(({ icon: Icon, text }) => (
-            <View key={text} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View key={text} style={styles.tile}>
               <View style={styles.dot}>
-                <Icon size={15} color="#fff" />
+                <Icon size={17} color="#fff" />
               </View>
-              <Text variant="bodyMedium" style={{ color: '#DDE6E1' }}>
+              <Text variant="smallMedium" style={{ color: '#fff', textAlign: 'center' }}>
                 {text}
               </Text>
             </View>
           ))}
         </Animated.View>
-        <Animated.View entering={FadeInDown.delay(240).duration(500)} style={{ gap: 10, marginTop: 8 }}>
+        <Animated.View entering={FadeInDown.delay(240).duration(500)} style={{ gap: 6 }}>
           <Button
             title="Create an account"
             kind="secondary"
-            textColor="#121614"
+            arrow
+            textColor="#121212"
             onPress={() => router.push('/sign-up')}
             style={{ backgroundColor: '#fff', borderWidth: 0 }}
           />
-          <Button
-            title="I already have an account"
-            kind="ghost"
-            textColor="#fff"
-            onPress={() => router.push('/sign-in')}
-            style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' }}
-          />
+          <Button title="I already have an account" kind="ghost" textColor="#fff" onPress={() => router.push('/sign-in')} />
         </Animated.View>
       </View>
     </View>
@@ -86,11 +76,21 @@ export default function Welcome() {
 
 const styles = StyleSheet.create({
   brand: { position: 'absolute', left: gutter, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logo: { width: 34, height: 34, borderRadius: 10, backgroundColor: '#1C6A4E', alignItems: 'center', justifyContent: 'center' },
+  wordmark: { fontFamily: font.bold, fontSize: 15, letterSpacing: 2.5, textTransform: 'uppercase', color: '#fff' },
+  tiles: {
+    flexDirection: 'row',
+    gap: 6,
+    padding: 8,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  tile: { flex: 1, alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 4 },
   dot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center',
     justifyContent: 'center',

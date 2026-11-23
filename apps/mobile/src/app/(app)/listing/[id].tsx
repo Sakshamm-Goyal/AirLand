@@ -1,4 +1,4 @@
-import { formatArea, formatInr, formatPerUnit, groupInr, type Listing, toSqft } from '@landconnect/shared';
+import { formatArea, formatInr, groupInr, type Listing, toSqft } from '@landconnect/shared';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -10,7 +10,6 @@ import {
   Landmark,
   Lock,
   MapPin,
-  MessageCircle,
   Pencil,
   Phone,
   Ruler,
@@ -161,36 +160,44 @@ function Detail({ l }: { l: Listing }) {
               </View>
             ) : null}
           </View>
-          <Text variant="title">{l.title}</Text>
+          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
+            <Text variant="title" style={{ flex: 1 }}>
+              {l.title}
+            </Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text variant="micro" color="muted">
+                Asking
+              </Text>
+              <Text variant="priceLg" color="accent">
+                {formatInr(l.priceInr)}
+              </Text>
+            </View>
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <MapPin size={15} color={c.muted} />
-            <Text variant="body" color="muted">
+            <Text variant="small" color="muted" style={{ flex: 1 }}>
               {[l.locality, l.district, l.state].filter(Boolean).join(', ')}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10, marginTop: 4 }}>
-            <Text variant="display" style={{ fontVariant: ['tabular-nums'] }}>
-              {formatInr(l.priceInr)}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <PerUnitChip listing={l} />
+            <Text variant="small" color="muted">
+              ₹ {groupInr(l.priceInr)} total
+            </Text>
           </View>
-          <Text variant="small" color="muted">
-            ₹ {groupInr(l.priceInr)}
-          </Text>
 
           <View style={s.grid}>
             {specs.map(({ icon: Icon, label, value, sub }) => (
-              <View key={label} style={s.spec}>
-                <Icon size={18} color={c.brand} />
-                <Text variant="label" color="muted">
+              <View key={label} style={s.spec} accessible accessibilityLabel={`${label}: ${value}${sub ? `, ${sub}` : ''}`}>
+                <View style={s.specIcon}>
+                  <Icon size={17} color={c.ink} />
+                </View>
+                <Text variant="smallMedium" numberOfLines={1} style={{ textAlign: 'center' }}>
+                  {value}
+                </Text>
+                <Text variant="micro" color="muted" numberOfLines={1}>
                   {label}
                 </Text>
-                <Text variant="bodyMedium">{value}</Text>
-                {sub ? (
-                  <Text variant="small" color="muted">
-                    {sub}
-                  </Text>
-                ) : null}
               </View>
             ))}
           </View>
@@ -285,17 +292,9 @@ function Detail({ l }: { l: Listing }) {
           </>
         ) : (
           <>
-            <View style={{ flex: 1 }}>
-              <Text variant="h1" numberOfLines={1} style={{ fontVariant: ['tabular-nums'] }}>
-                {formatInr(l.priceInr)}
-              </Text>
-              <Text variant="micro" color="accent" numberOfLines={1}>
-                {formatPerUnit(l.priceInr, l.area, l.areaUnit)}
-              </Text>
-            </View>
-            <IconButton icon={MessageCircle} label="Chat" size={50} onPress={openChat} />
-            <IconButton icon={Video} label="Video call" size={50} onPress={() => call('video')} />
-            <Button title="Call" icon={Phone} disabled={start.isPending} onPress={() => call('audio')} style={{ height: 50 }} />
+            <Button title="Chat" arrow style={{ flex: 1 }} loading={start.isPending} onPress={openChat} />
+            <Button title="Call" icon={Phone} kind="accent" disabled={start.isPending} onPress={() => call('audio')} />
+            <IconButton icon={Video} label="Video call" size={54} onPress={() => call('video')} />
           </>
         )}
       </View>
@@ -318,8 +317,19 @@ const useStyles = makeStyles(({ c }) => ({
     gap: 12,
   },
   tag: { backgroundColor: c.surfaceAlt, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.full },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 8 },
-  spec: { width: '48.5%', backgroundColor: c.surface, borderRadius: radius.md, padding: 14, gap: 4, borderWidth: 1, borderColor: c.line },
+  grid: { flexDirection: 'row', gap: 8, marginVertical: 8 },
+  spec: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: c.surface,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: c.line,
+  },
+  specIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: c.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   doc: {
     flexDirection: 'row',
     alignItems: 'center',

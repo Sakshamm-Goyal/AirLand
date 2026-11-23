@@ -1,6 +1,6 @@
 # End-to-end tests
 
-Two isolated browser sessions (a seller and a buyer) drive the real UI against the real API: sign-up, listing with a photo, search, chat both ways, video call accept/end, decline with quick reply, missed call after 30 s, call log, edit and mark sold. Each run signs up fresh users, so it can run against any seeded or unseeded database.
+Two isolated browser sessions (a seller and a buyer) drive the real UI against the real API: sign-up, listing with a photo, search, chat both ways, video call accept/end, decline with quick reply, missed call after 30 s, call log, edit and mark sold. Each run signs up fresh users (`*@e2e.test`), so it can run against any seeded or unseeded database; a global teardown deletes them afterwards. Set `E2E_DATABASE_URL` if your API's database isn't `postgres://lc:lc@localhost:5433/landconnect`.
 
 ```bash
 pnpm db:up && pnpm --filter api db:migrate      # Postgres

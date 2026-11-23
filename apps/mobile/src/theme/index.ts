@@ -7,13 +7,13 @@ type NamedStyles = Record<string, ViewStyle | TextStyle | ImageStyle>;
  * Every color in the app comes from here. Light and dark are both first-class.
  */
 const light = {
-  bg: '#F6F4EF',
+  bg: '#F7F6F3',
   surface: '#FFFFFF',
-  surfaceAlt: '#EFECE5',
-  ink: '#121614',
+  surfaceAlt: '#F0EEE9',
+  ink: '#121212',
   inkSoft: '#3A403C',
   muted: '#6F766F',
-  line: '#E4E0D6',
+  line: '#E7E4DD',
   onInk: '#FFFFFF',
   brand: '#1C6A4E',
   brandSoft: '#E1EFE7',
@@ -35,9 +35,9 @@ const light = {
 };
 
 const dark: typeof light = {
-  bg: '#0D100F',
-  surface: '#161A18',
-  surfaceAlt: '#1E2321',
+  bg: '#0E0F0F',
+  surface: '#181919',
+  surfaceAlt: '#212222',
   ink: '#F1F0EB',
   inkSoft: '#C9CCC6',
   muted: '#8D948E',
@@ -65,27 +65,28 @@ const dark: typeof light = {
 export type Colors = typeof light;
 
 export const font = {
-  display: 'BricolageGrotesque_700Bold',
-  displayMedium: 'BricolageGrotesque_600SemiBold',
-  body: 'Inter_400Regular',
-  medium: 'Inter_500Medium',
-  semibold: 'Inter_600SemiBold',
-  bold: 'Inter_700Bold',
+  // Outfit everywhere: geometric, clean at display sizes, readable as body text.
+  display: 'Outfit_600SemiBold',
+  body: 'Outfit_400Regular',
+  medium: 'Outfit_500Medium',
+  semibold: 'Outfit_600SemiBold',
+  bold: 'Outfit_700Bold',
 } as const;
 
 export const type = {
-  hero: { fontFamily: font.display, fontSize: 34, lineHeight: 38, letterSpacing: -0.8 },
-  display: { fontFamily: font.display, fontSize: 30, lineHeight: 34, letterSpacing: -0.6 },
-  title: { fontFamily: font.display, fontSize: 24, lineHeight: 28, letterSpacing: -0.4 },
-  h1: { fontFamily: font.displayMedium, fontSize: 20, lineHeight: 25, letterSpacing: -0.2 },
+  hero: { fontFamily: font.display, fontSize: 36, lineHeight: 40, letterSpacing: -1 },
+  display: { fontFamily: font.display, fontSize: 30, lineHeight: 35, letterSpacing: -0.7 },
+  title: { fontFamily: font.display, fontSize: 24, lineHeight: 29, letterSpacing: -0.4 },
+  h1: { fontFamily: font.display, fontSize: 18, lineHeight: 23, letterSpacing: -0.2 },
   h2: { fontFamily: font.semibold, fontSize: 17, lineHeight: 22 },
-  body: { fontFamily: font.body, fontSize: 15, lineHeight: 21 },
-  bodyMedium: { fontFamily: font.medium, fontSize: 15, lineHeight: 21 },
-  small: { fontFamily: font.body, fontSize: 13, lineHeight: 18 },
-  smallMedium: { fontFamily: font.medium, fontSize: 13, lineHeight: 18 },
-  micro: { fontFamily: font.semibold, fontSize: 12, lineHeight: 16 },
+  body: { fontFamily: font.body, fontSize: 16, lineHeight: 22 },
+  bodyMedium: { fontFamily: font.medium, fontSize: 16, lineHeight: 22 },
+  small: { fontFamily: font.body, fontSize: 14, lineHeight: 19 },
+  smallMedium: { fontFamily: font.medium, fontSize: 14, lineHeight: 19 },
+  micro: { fontFamily: font.medium, fontSize: 12.5, lineHeight: 16 },
   label: { fontFamily: font.semibold, fontSize: 11, lineHeight: 14, letterSpacing: 0.8, textTransform: 'uppercase' },
-  price: { fontFamily: font.display, fontSize: 22, lineHeight: 26, fontVariant: ['tabular-nums'] },
+  price: { fontFamily: font.semibold, fontSize: 20, lineHeight: 25, letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
+  priceLg: { fontFamily: font.semibold, fontSize: 26, lineHeight: 31, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
 } satisfies Record<string, TextStyle>;
 
 export type TypeVariant = keyof typeof type;
@@ -114,4 +115,4 @@ export function makeStyles<S extends NamedStyles>(fn: (t: Theme) => S & NamedSty
 }
 
 export const shadow = (dark: boolean) =>
-  dark ? {} : { shadowColor: '#2A2116', shadowOpacity: 0.08, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 3 };
+  dark ? {} : { shadowColor: '#1A1612', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 };

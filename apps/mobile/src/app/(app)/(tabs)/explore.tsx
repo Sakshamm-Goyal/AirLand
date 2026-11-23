@@ -4,13 +4,13 @@ import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { Heart, Plus, Search, SearchX, SlidersHorizontal, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FeaturedCard, LAND_TYPE_LABEL, ListingCard } from '@/components/ListingCard';
+import { LAND_TYPE_LABEL, ListingCard } from '@/components/ListingCard';
 import { Avatar, Button, Chip, EmptyState, IconButton, Skeleton, Text } from '@/components/ui';
 import { type Filters, useListings } from '@/lib/queries';
 import { useSession } from '@/lib/session';
-import { gutter, makeStyles, radius, type, useTheme } from '@/theme';
+import { font, gutter, makeStyles, radius, type, useTheme } from '@/theme';
 
 const PRICE_BANDS: { label: string; min?: number; max?: number }[] = [
   { label: 'Any price' },
@@ -47,23 +47,21 @@ export default function Explore() {
   const q = useListings(filters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
   const canList = user.role !== 'buyer';
-  const { width } = useWindowDimensions();
-  const railW = Math.min(width * 0.72, 300);
   const browsing = Boolean(filters.q || filters.type || filters.saved || filters.minPrice || filters.maxPrice);
-  const verified = browsing ? [] : items.filter((l) => l.owner.verified && !l.isMine).slice(0, 6);
 
   const header = (
-    <View style={{ paddingTop: insets.top + 8, gap: 16, paddingBottom: 16 }}>
+    <View style={{ paddingTop: insets.top + 10, gap: 18, paddingBottom: 14 }}>
       <View style={[s.row, { paddingHorizontal: gutter }]}>
-        <View style={{ flex: 1 }}>
-          <Text variant="small" color="muted">
-            {greeting()}, {user.name.split(' ')[0]}
-          </Text>
-          <Text variant="display">Find your land</Text>
-        </View>
+        <Text style={s.wordmark}>LandConnect</Text>
         <Pressable onPress={() => router.push('/profile')} accessibilityLabel="Your profile" hitSlop={6}>
-          <Avatar name={user.name} uri={user.avatarUrl} size={44} />
+          <Avatar name={user.name} uri={user.avatarUrl} size={40} />
         </Pressable>
+      </View>
+      <View style={{ paddingHorizontal: gutter, gap: 8 }}>
+        <Text variant="hero">Find land{'\n'}worth owning</Text>
+        <Text variant="small" color="muted">
+          {greeting()}, {user.name.split(' ')[0]}. Talk to owners here; your number stays hidden.
+        </Text>
       </View>
       <View style={[s.row, { paddingHorizontal: gutter, gap: 10 }]}>
         <View style={s.search}>
@@ -83,18 +81,22 @@ export default function Explore() {
           icon={SlidersHorizontal}
           label="Price filter"
           variant={band ? 'ink' : 'surface'}
-          size={52}
+          size={50}
           onPress={() => sheet.current?.present()}
         />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: 8 }}>
+        <Chip
+          label="All"
+          selected={!filters.type && !filters.saved}
+          onPress={() => setFilters((f) => ({ ...f, type: undefined, saved: undefined }))}
+        />
         <Chip
           label="Saved"
           icon={Heart}
           selected={filters.saved === 'true'}
           onPress={() => setFilters((f) => ({ ...f, saved: f.saved ? undefined : 'true' }))}
         />
-        <Chip label="All" selected={!filters.type} onPress={() => setFilters((f) => ({ ...f, type: undefined }))} />
         {LAND_TYPES.map((t: LandType) => (
           <Chip
             key={t}
@@ -104,26 +106,8 @@ export default function Explore() {
           />
         ))}
       </ScrollView>
-      {verified.length >= 2 ? (
-        <View style={{ gap: 12, marginTop: 4 }}>
-          <View style={[s.section, { paddingHorizontal: gutter }]}>
-            <Text variant="h1">From verified sellers</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={railW + 12}
-            decelerationRate="fast"
-            contentContainerStyle={{ paddingHorizontal: gutter, gap: 12 }}
-          >
-            {verified.map((l) => (
-              <FeaturedCard key={l.id} listing={l} width={railW} />
-            ))}
-          </ScrollView>
-        </View>
-      ) : null}
       {items.length ? (
-        <View style={[s.section, { paddingHorizontal: gutter, marginTop: 4 }]}>
+        <View style={[s.section, { paddingHorizontal: gutter }]}>
           <Text variant="h1">{filters.saved ? 'Saved plots' : browsing ? 'Results' : 'Latest land'}</Text>
           <Text variant="small" color="muted">
             {items.length}
@@ -222,11 +206,12 @@ export default function Explore() {
 }
 
 const useStyles = makeStyles(({ c }) => ({
-  row: { flexDirection: 'row', alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  wordmark: { fontFamily: font.bold, fontSize: 15, letterSpacing: 2.5, textTransform: 'uppercase', color: c.ink },
   section: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   search: {
     flex: 1,
-    height: 52,
+    height: 50,
     borderRadius: radius.full,
     backgroundColor: c.surface,
     borderWidth: 1,

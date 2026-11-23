@@ -59,8 +59,8 @@ function Tab({
       accessibilityLabel={badge ? `${label}, ${badge} unread` : label}
       style={st.tab}
     >
-      <View style={[st.pill, isFocused && { backgroundColor: c.brandSoft }]}>
-        <Icon size={22} color={isFocused ? c.ink : c.muted} strokeWidth={isFocused ? 2.4 : 2} />
+      <View style={[st.pill, isFocused && { backgroundColor: c.accentSoft }]}>
+        <Icon size={22} color={isFocused ? c.accent : c.muted} strokeWidth={isFocused ? 2.4 : 2} />
         {badge > 0 ? (
           <View style={st.badge}>
             <Text variant="micro" color="onInk" style={st.badgeText}>
@@ -69,7 +69,7 @@ function Tab({
           </View>
         ) : null}
       </View>
-      <Text variant={isFocused ? 'micro' : 'smallMedium'} color={isFocused ? 'ink' : 'muted'} style={st.label}>
+      <Text variant={isFocused ? 'micro' : 'smallMedium'} color={isFocused ? 'accent' : 'muted'} style={st.label}>
         {label}
       </Text>
     </Pressable>

@@ -19,6 +19,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
     "@playwright/test": "1.65.1",
+    "postgres": "^4.1.1",
     "typescript": "~6.0.3"
   }
 }

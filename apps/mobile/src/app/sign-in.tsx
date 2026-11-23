@@ -28,7 +28,7 @@ export default function SignIn() {
     <FormScreen
       title="Welcome back"
       subtitle="Sign in to continue your land conversations."
-      footer={<Button title="Sign in" onPress={submit} loading={signIn.isPending} />}
+      footer={<Button title="Sign in" arrow onPress={submit} loading={signIn.isPending} />}
     >
       <Controller
         control={control}
@@ -93,7 +93,7 @@ export default function SignIn() {
       <Pressable onPress={() => router.replace('/sign-up')} style={{ alignSelf: 'center', marginTop: 12 }} hitSlop={10}>
         <Text variant="bodyMedium" color="muted">
           New here?{' '}
-          <Text variant="bodyMedium" color="brand">
+          <Text variant="bodyMedium" color="accent">
             Create an account
           </Text>
         </Text>
