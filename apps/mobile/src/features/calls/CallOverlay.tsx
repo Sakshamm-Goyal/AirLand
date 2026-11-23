@@ -2,8 +2,21 @@ import { formatDuration, type PublicUser } from '@landconnect/shared';
 import { LiveKitRoom, useConnectionState, useLocalParticipant, useRemoteParticipants, useTracks } from '@livekit/react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { ConnectionState, Track } from 'livekit-client';
-import { Lock, MessageSquareText, Mic, MicOff, Phone, PhoneOff, RefreshCcw, Video, VideoOff, Volume2, VolumeX } from 'lucide-react-native';
+import { ConnectionQuality, ConnectionState, type Participant, ParticipantEvent, Track } from 'livekit-client';
+import {
+  Lock,
+  MessageSquareText,
+  Mic,
+  MicOff,
+  Phone,
+  PhoneOff,
+  RefreshCcw,
+  Video,
+  VideoOff,
+  Volume2,
+  VolumeX,
+  WifiLow,
+} from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { BackHandler, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -224,6 +237,15 @@ function CallStage() {
     return () => clearTimeout(t);
   }, [aloneSince]);
 
+  const myQuality = useQuality(localParticipant);
+  const theirQuality = useQuality(remotes[0]);
+  const weak = [myQuality, theirQuality].find((q) => q === ConnectionQuality.Poor || q === ConnectionQuality.Lost);
+  const weakText = weak
+    ? myQuality === weak
+      ? 'Your connection is weak'
+      : `${peer?.name.split(' ')[0] ?? 'Their'}'s connection is weak`
+    : null;
+
   const statusLine =
     connection === ConnectionState.Reconnecting
       ? 'Reconnecting…'
@@ -253,6 +275,14 @@ function CallStage() {
               {statusLine}
             </Text>
           </View>
+        ) : null}
+        {weakText ? (
+          <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.weak} accessibilityLiveRegion="polite">
+            <WifiLow size={14} color="#FFD29A" />
+            <Text variant="micro" style={{ color: '#FFE7C7' }}>
+              {weakText}
+            </Text>
+          </Animated.View>
         ) : null}
       </LinearGradient>
 
@@ -291,6 +321,20 @@ function CallStage() {
       </View>
     </View>
   );
+}
+
+/** LiveKit's per-participant estimate (packet loss, jitter, RTT), updated every few seconds. */
+function useQuality(p: Participant | undefined) {
+  const [q, setQ] = useState(p?.connectionQuality ?? ConnectionQuality.Unknown);
+  useEffect(() => {
+    if (!p) return;
+    setQ(p.connectionQuality);
+    p.on(ParticipantEvent.ConnectionQualityChanged, setQ);
+    return () => {
+      p.off(ParticipantEvent.ConnectionQualityChanged, setQ);
+    };
+  }, [p]);
+  return q;
 }
 
 function Control({
@@ -383,5 +427,16 @@ const styles = StyleSheet.create({
   round: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
   topShade: { position: 'absolute', left: 0, right: 0, top: 0, paddingBottom: 40 },
   controls: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'center', gap: 18, paddingTop: 20 },
+  weak: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: 'rgba(120,60,10,0.55)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 99,
+  },
   control: { width: 62, height: 62, borderRadius: 31, alignItems: 'center', justifyContent: 'center' },
 });
