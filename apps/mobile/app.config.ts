@@ -3,6 +3,7 @@ import type { ExpoConfig } from 'expo/config';
 const config: ExpoConfig = {
   name: 'LandConnect',
   slug: 'landconnect',
+  owner: 'samcook',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -50,7 +51,7 @@ const config: ExpoConfig = {
     ['expo-build-properties', { android: { usesCleartextTraffic: true } }],
   ],
   experiments: { typedRoutes: true, reactCompiler: true },
-  extra: { eas: { projectId: process.env.EAS_PROJECT_ID } },
+  extra: { eas: { projectId: '0d74b7a8-c01b-44ce-8519-27ecf4b687b6' } },
 };
 
 export default config;
