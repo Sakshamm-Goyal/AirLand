@@ -21,6 +21,7 @@ pnpm --filter api db:seed        # demo users buyer|seller|broker@demo.test, pas
 pnpm dev:api                     # http://localhost:4000 · /health · /openapi.json
 pnpm dev:mobile                  # Metro for the dev client
 pnpm check                       # biome + tsc (all packages) + vitest (all packages) — must pass before "done"
+pnpm --filter api livekit:check  # proves LIVEKIT_* creds + a real participant token work (self-hosted or Cloud)
 
 # schema change: edit apps/api/src/db/schema.ts, then
 pnpm --filter api db:generate    # writes a new drizzle/NNNN_*.sql; commit it; never edit an applied migration

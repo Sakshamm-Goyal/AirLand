@@ -70,7 +70,7 @@ npx eas-cli build -p android --profile preview    # installable APK, points at t
 
 ## Deploy the API (free tier)
 
-`render.yaml` is a Render blueprint: Node 24 web service, migrations run before each deploy. Use Supabase or Neon for Postgres and LiveKit Cloud for media; set `DATABASE_URL`, `JWT_SECRET`, `PUBLIC_URL`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`.
+`render.yaml` is a Render blueprint: Node 24 web service, migrations run before each deploy. Use Supabase or Neon for Postgres; for media use self-hosted LiveKit or LiveKit Cloud ([docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)); set `DATABASE_URL`, `JWT_SECRET`, `PUBLIC_URL`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`.
 
 ## Quality
 
@@ -84,6 +84,7 @@ API tests run against a real Postgres and real Socket.IO clients: auth and refre
 
 - [docs/TECHNICAL.md](docs/TECHNICAL.md): technical documentation (technologies, architecture, decisions, challenges)
 - [docs/AI_USAGE.md](docs/AI_USAGE.md): how AI tools were used
+- [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md): run calls on your own LiveKit server (laptop or VM), or on LiveKit Cloud
 - [docs/PLAN.md](docs/PLAN.md): timeline and scope
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): system design, schema, events, call sequence
 - [docs/DECISIONS.md](docs/DECISIONS.md): competitor research and technology comparison (LiveKit vs Stream / Agora / ZEGOCLOUD / Jitsi / raw WebRTC)

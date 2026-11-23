@@ -275,6 +275,116 @@ describe('http', () => {
   });
 });
 
+describe('uploads', () => {
+  const multipart = (name: string, type: string, body: Buffer) => {
+    const b = '----lcboundary';
+    const head = Buffer.from(`--${b}\r\nContent-Disposition: form-data; name="file"; filename="${name}"\r\nContent-Type: ${type}\r\n\r\n`);
+    return {
+      payload: Buffer.concat([head, body, Buffer.from(`\r\n--${b}--\r\n`)]),
+      headers: { 'content-type': `multipart/form-data; boundary=${b}` },
+    };
+  };
+  // Smallest valid JPEG header bytes are enough: the server stores bytes as-is.
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1, 0xff, 0xd9]);
+
+  it('stores a photo and serves it back with immutable caching; rejects other types and anonymous uploads', async () => {
+    const seller = await user('seller');
+    const m = multipart('plot.jpg', 'image/jpeg', jpeg);
+    const up = await app.inject({
+      method: 'POST',
+      url: '/uploads',
+      headers: { ...m.headers, authorization: `Bearer ${seller.accessToken}` },
+      payload: m.payload,
+    });
+    expect(up.statusCode).toBe(201);
+    const path = new URL(up.json().url).pathname;
+    const got = await app.inject({ method: 'GET', url: path });
+    expect(got.statusCode).toBe(200);
+    expect(got.headers['content-type']).toBe('image/jpeg');
+    expect(got.headers['cache-control']).toContain('immutable');
+    expect(Buffer.compare(got.rawPayload, jpeg)).toBe(0);
+
+    const txt = multipart('x.txt', 'text/plain', Buffer.from('hi'));
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/uploads',
+          headers: { ...txt.headers, authorization: `Bearer ${seller.accessToken}` },
+          payload: txt.payload,
+        })
+      ).statusCode,
+    ).toBe(415);
+    expect((await app.inject({ method: 'POST', url: '/uploads', headers: m.headers, payload: m.payload })).statusCode).toBe(401);
+  });
+});
+
+describe('listing lifecycle', () => {
+  it('a sold listing leaves the public feed but stays in My listings', async () => {
+    const seller = await user('seller');
+    const l = await api<Listing>('POST', '/listings', seller.accessToken, { ...listing, title: 'Plot that will be sold' });
+    await api('PATCH', `/listings/${l.body.id}`, seller.accessToken, { status: 'sold' });
+    const feed = await api<Page<Listing>>('GET', '/listings?limit=50', seller.accessToken);
+    expect(feed.body.items.some((x) => x.id === l.body.id)).toBe(false);
+    const mine = await api<Page<Listing>>('GET', '/listings?owner=me', seller.accessToken);
+    expect(mine.body.items.find((x) => x.id === l.body.id)?.status).toBe('sold');
+  });
+});
+
+describe('call edge cases', () => {
+  it('a second device of the callee is told when the first one answers', async () => {
+    const { seller, conv, s, b } = await pair();
+    const s2 = await sock(seller.accessToken);
+    const ring1 = next(s, 'call:incoming');
+    const ring2 = next(s2, 'call:incoming');
+    await emit(b, 'call:invite', { conversationId: conv.id, kind: 'video' });
+    const { callId } = await ring1;
+    await ring2;
+    const elsewhere = next(s2, 'call:answered_elsewhere');
+    expect((await emit(s, 'call:accept', { callId })).ok).toBe(true);
+    expect((await elsewhere).callId).toBe(callId);
+    expect((await emit(s2, 'call:accept', { callId })).ok).toBe(false);
+    b.emit('call:end', { callId });
+  });
+
+  it('replays a still-ringing invite when the callee connects late (app was in background)', async () => {
+    const seller = await user('seller');
+    const buyer = await user('buyer');
+    const l = await api<Listing>('POST', '/listings', seller.accessToken, listing);
+    const conv = await api<Conversation>('POST', '/conversations', buyer.accessToken, { listingId: l.body.id });
+    const b = await sock(buyer.accessToken);
+    const inv = await emit<{ callId: string }>(b, 'call:invite', { conversationId: conv.body.id, kind: 'audio' });
+    // Seller opens the app only now.
+    const late = new Promise<CallInvite>((resolve, reject) => {
+      const s: Client = connect(base, { auth: { token: seller.accessToken }, transports: ['websocket'], forceNew: true });
+      sockets.push(s);
+      s.once('call:incoming', resolve);
+      s.on('connect_error', reject);
+    });
+    expect((await late).callId).toBe(inv.ok && inv.data.callId);
+    b.emit('call:cancel', { callId: (await late).callId });
+  });
+
+  it('caller cancel and caller disconnect both stop the ringing on the callee', async () => {
+    const { conv, s, b, buyer } = await pair();
+    const ring = next(s, 'call:incoming');
+    await emit(b, 'call:invite', { conversationId: conv.id, kind: 'audio' });
+    const { callId } = await ring;
+    const closed = next(s, 'call:closed');
+    b.emit('call:cancel', { callId });
+    expect(await closed).toMatchObject({ callId, reason: 'cancelled' });
+
+    const ring2 = next(s, 'call:incoming');
+    const b2 = await sock(buyer.accessToken);
+    b.disconnect();
+    await emit(b2, 'call:invite', { conversationId: conv.id, kind: 'audio' });
+    const second = await ring2;
+    const closed2 = next(s, 'call:closed');
+    b2.disconnect(); // caller's last socket gone mid-ring
+    expect(await closed2).toMatchObject({ callId: second.callId, reason: 'cancelled' });
+  });
+});
+
 it('shuts down promptly even with a live socket connected', async () => {
   const other = await buildApp();
   await other.listen({ port: 0, host: '127.0.0.1' });
