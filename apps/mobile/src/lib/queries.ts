@@ -9,6 +9,7 @@ import type {
   Me,
   Message,
   Page,
+  PublicUser,
   SignUpInput,
 } from '@landconnect/shared';
 import { type InfiniteData, QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -38,6 +39,7 @@ export const qk = {
   conversation: (id: string) => ['conversation', id] as const,
   messages: (id: string) => ['messages', id] as const,
   calls: ['calls'] as const,
+  blocks: ['blocks'] as const,
 };
 
 const qs = (o: object) =>
@@ -193,4 +195,18 @@ export function upsertMessage(m: Message) {
 
 export function useCallLog() {
   return useQuery({ queryKey: qk.calls, queryFn: () => api.get<CallLogEntry[]>('/calls') });
+}
+
+// ── Blocking ─────────────────────────────────────────────────────────────
+export function useBlocks() {
+  return useQuery({ queryKey: qk.blocks, queryFn: () => api.get<PublicUser[]>('/me/blocks') });
+}
+
+export function useSetBlocked() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, blocked }: { userId: string; blocked: boolean }) =>
+      blocked ? api.post(`/users/${userId}/block`) : api.del(`/users/${userId}/block`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.blocks }),
+  });
 }

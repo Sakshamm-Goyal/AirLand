@@ -2,16 +2,27 @@ import { formatInr, type Message } from '@landconnect/shared';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowUp, Check, ChevronLeft, Clock3, Phone, PhoneIncoming, PhoneMissed, Users, Video } from 'lucide-react-native';
+import {
+  ArrowUp,
+  Check,
+  ChevronLeft,
+  Clock3,
+  EllipsisVertical,
+  Phone,
+  PhoneIncoming,
+  PhoneMissed,
+  Users,
+  Video,
+} from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Alert, Pressable, TextInput, View } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 import { Avatar, Button, IconButton, RoleBadge, Text } from '@/components/ui';
 import { calls } from '@/features/calls/store';
 import { convTitle, peerOf } from '@/lib/conversation';
-import { upsertMessage, useConversation, useMessages } from '@/lib/queries';
+import { upsertMessage, useConversation, useMessages, useSetBlocked } from '@/lib/queries';
 import { usePresence, useTyping } from '@/lib/realtime';
 import { useSession } from '@/lib/session';
 import { emitAck, getSocket } from '@/lib/socket';
@@ -30,6 +41,7 @@ export default function Chat() {
   const msgs = useMessages(id);
   const typingUser = useTyping((t) => t[id]);
   const [text, setText] = useState('');
+  const setBlocked = useSetBlocked();
   const items: UiMessage[] = msgs.data?.pages.flat() ?? [];
 
   const peer = conv ? peerOf(conv, me) : null;
@@ -136,6 +148,32 @@ export default function Chat() {
                   label={`Video call ${peer.name}`}
                   variant="plain"
                   onPress={() => calls.start(id, 'video', peer, conv.listing?.title ?? null)}
+                />
+                <IconButton
+                  icon={EllipsisVertical}
+                  label="More options"
+                  variant="plain"
+                  size={36}
+                  onPress={() =>
+                    Alert.alert(`Block ${peer.name}?`, "They won't be able to message or call you. They aren't told.", [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Block',
+                        style: 'destructive',
+                        onPress: () =>
+                          setBlocked.mutate(
+                            { userId: peer.id, blocked: true },
+                            {
+                              onSuccess: () => {
+                                toast(`${peer.name} is blocked`, { description: 'Unblock any time from your profile.' });
+                                router.back();
+                              },
+                              onError: (e) => toast.error(e.message),
+                            },
+                          ),
+                      },
+                    ])
+                  }
                 />
               </>
             )}

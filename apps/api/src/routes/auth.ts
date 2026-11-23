@@ -1,11 +1,11 @@
 import { type AuthResponse, loginSchema, refreshSchema, signUpSchema, updateMeSchema } from '@landconnect/shared';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { authenticate, hashPassword, issueRefresh, revokeRefresh, rotateRefresh, signAccess, verifyPassword } from '../auth.ts';
 import { config } from '../config.ts';
 import { db, schema } from '../db/client.ts';
-import { toMe } from '../dto.ts';
+import { toMe, toPublicUser } from '../dto.ts';
 import { HttpError, notFound } from '../errors.ts';
 
 const { users, blocks } = schema;
@@ -71,6 +71,16 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     const [user] = await db.update(users).set(req.body).where(eq(users.id, req.user.id)).returning();
     if (!user) throw notFound();
     return toMe(user);
+  });
+
+  app.get('/me/blocks', { preHandler: authenticate }, async (req) => {
+    const rows = await db
+      .select({ u: users })
+      .from(blocks)
+      .innerJoin(users, eq(users.id, blocks.blockedId))
+      .where(eq(blocks.blockerId, req.user.id))
+      .orderBy(desc(blocks.createdAt));
+    return rows.map((r) => toPublicUser(r.u));
   });
 
   const userParams = z.object({ id: z.uuid() });

@@ -28,6 +28,12 @@ export async function isBlocked(a: string, b: string) {
   return Boolean(row);
 }
 
+/** In a 1:1 conversation, either side blocking the other stops messages and calls. Rooms are moderated by leaving. */
+export async function blockedIn(memberIdList: string[], me: string) {
+  const other = memberIdList.length === 2 ? memberIdList.find((id) => id !== me) : undefined;
+  return other ? isBlocked(me, other) : false;
+}
+
 export async function postMessage(
   conversationId: string,
   senderId: string | null,

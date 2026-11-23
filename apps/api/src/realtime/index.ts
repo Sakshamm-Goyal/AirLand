@@ -3,7 +3,7 @@ import type { ClientToServer, ServerToClient } from '@landconnect/shared';
 import { and, eq } from 'drizzle-orm';
 import { Server } from 'socket.io';
 import { verifyAccess } from '../auth.ts';
-import { bus, memberIds, postMessage } from '../conversations.ts';
+import { blockedIn, bus, memberIds, postMessage } from '../conversations.ts';
 import { db, schema } from '../db/client.ts';
 import { joinInfo } from '../livekit.ts';
 import { registerCallHandlers } from './calls.ts';
@@ -39,7 +39,9 @@ export function createRealtime(http: HttpServer, corsOrigin: string | string[]) 
     socket.on('message:send', async ({ conversationId, body, clientId }, ack) => {
       const text = body?.trim().slice(0, 4000);
       if (!text) return ack({ ok: false, error: 'Empty message' });
-      if (!(await memberIds(conversationId)).includes(me)) return ack({ ok: false, error: 'Conversation not found' });
+      const ids = await memberIds(conversationId);
+      if (!ids.includes(me)) return ack({ ok: false, error: 'Conversation not found' });
+      if (await blockedIn(ids, me)) return ack({ ok: false, error: "You can't message this person" });
       ack({ ok: true, data: await postMessage(conversationId, me, text, 'text', null, clientId) });
     });
 

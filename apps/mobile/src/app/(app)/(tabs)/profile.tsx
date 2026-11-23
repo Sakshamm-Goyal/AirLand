@@ -7,7 +7,7 @@ import { Pressable, ScrollView, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Button, Divider, RoleBadge, Text } from '@/components/ui';
 import { api } from '@/lib/api';
-import { queryClient, useMyListings, useUpdateMe } from '@/lib/queries';
+import { queryClient, useBlocks, useMyListings, useSetBlocked, useUpdateMe } from '@/lib/queries';
 import { useSession } from '@/lib/session';
 import { closeSocket } from '@/lib/socket';
 import { gutter, makeStyles, radius, useTheme } from '@/theme';
@@ -20,6 +20,8 @@ export default function Profile() {
   const update = useUpdateMe();
   const canList = user.role !== 'buyer';
   const mine = useMyListings();
+  const blocks = useBlocks().data ?? [];
+  const setBlocked = useSetBlocked();
 
   const signOut = async () => {
     const token = useSession.getState().refreshToken;
@@ -104,6 +106,33 @@ export default function Profile() {
           />
         </View>
       </View>
+
+      {blocks.length ? (
+        <View style={{ gap: 8 }}>
+          <Text variant="h1">Blocked people</Text>
+          <View style={s.card}>
+            {blocks.map((u, i) => (
+              <View key={u.id} style={{ gap: 14 }}>
+                {i ? <Divider /> : null}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Avatar name={u.name} uri={u.avatarUrl} size={40} />
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text variant="bodyMedium">{u.name}</Text>
+                    <RoleBadge role={u.role} />
+                  </View>
+                  <Button
+                    title="Unblock"
+                    size="md"
+                    kind="secondary"
+                    loading={setBlocked.isPending && setBlocked.variables?.userId === u.id}
+                    onPress={() => setBlocked.mutate({ userId: u.id, blocked: false })}
+                  />
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <Button title="Sign out" kind="secondary" icon={LogOut} onPress={signOut} />
     </ScrollView>

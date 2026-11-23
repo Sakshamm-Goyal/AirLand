@@ -235,3 +235,30 @@ describe('calls', () => {
     expect((await emit(b, 'call:invite', { conversationId: conv.id, kind: 'audio' })).ok).toBe(false);
   });
 });
+
+describe('editing and blocking', () => {
+  it('lets the owner edit fields and recomputes the normalised area', async () => {
+    const seller = await user('seller');
+    const l = await api<Listing>('POST', '/listings', seller.accessToken, listing);
+    const edited = await api<Listing>('PATCH', `/listings/${l.body.id}`, seller.accessToken, { title: 'Renamed two acre farm', area: 2.5 });
+    expect(edited.status).toBe(200);
+    expect(edited.body).toMatchObject({ title: 'Renamed two acre farm', area: 2.5, areaSqft: 108_900 });
+  });
+
+  it('a block stops messages and calls in an existing conversation, and unblocking restores them', async () => {
+    const { seller, buyer, conv, b } = await pair();
+    const sendMsg = () =>
+      new Promise<{ ok: boolean }>((r) => b.emit('message:send', { conversationId: conv.id, body: 'hello again', clientId: 'x' }, r));
+
+    expect((await api('POST', `/users/${buyer.user.id}/block`, seller.accessToken)).status).toBe(204);
+    const blocked = await api<{ id: string }[]>('GET', '/me/blocks', seller.accessToken);
+    expect(blocked.body.map((u) => u.id)).toEqual([buyer.user.id]);
+    expect(JSON.stringify(blocked.body)).not.toContain('+9198');
+
+    expect((await sendMsg()).ok).toBe(false);
+    expect((await emit(b, 'call:invite', { conversationId: conv.id, kind: 'audio' })).ok).toBe(false);
+
+    await api('DELETE', `/users/${buyer.user.id}/block`, seller.accessToken);
+    expect((await sendMsg()).ok).toBe(true);
+  });
+});
