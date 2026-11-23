@@ -2,6 +2,8 @@ import { NativeTabs } from 'expo-router/native-tabs';
 import { useConversations } from '@/lib/queries';
 import { font, useTheme } from '@/theme';
 
+export const unstable_settings = { anchor: 'explore' };
+
 /** Real native tab bar: Material 3 on Android, system tab bar on iOS. */
 export default function TabsLayout() {
   const { c } = useTheme();
@@ -18,7 +20,7 @@ export default function TabsLayout() {
         selected: { color: c.ink, fontFamily: font.semibold, fontSize: 11 },
       }}
     >
-      <NativeTabs.Trigger name="index">
+      <NativeTabs.Trigger name="explore">
         <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'square.grid.2x2', selected: 'square.grid.2x2.fill' }} md="grid_view" />
       </NativeTabs.Trigger>

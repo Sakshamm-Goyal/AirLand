@@ -9,7 +9,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { registerGlobals } from '@livekit/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -53,6 +53,16 @@ export default function RootLayout() {
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
   }, [ready]);
+
+  // The Stack.Protected guards below decide what is reachable; this sends the user to a concrete screen when the
+  // session flips (a guard redirect on its own lands on the bare group URL, which has no screen).
+  const segments = useSegments();
+  useEffect(() => {
+    if (!ready) return;
+    const inApp = segments[0] === '(app)';
+    if (status === 'signedIn' && !inApp) router.replace('/explore');
+    else if (status === 'signedOut' && inApp) router.replace('/');
+  }, [ready, status, segments]);
   if (!ready) return null;
 
   const base = dark ? DarkTheme : DefaultTheme;
@@ -72,8 +82,11 @@ export default function RootLayout() {
                 <Stack.Protected guard={status === 'signedIn'}>
                   <Stack.Screen name="(app)" />
                 </Stack.Protected>
+                {/* Signed-out screens live at the root: a guard redirect needs a concrete first screen, not a group URL. */}
                 <Stack.Protected guard={status !== 'signedIn'}>
-                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="sign-in" />
+                  <Stack.Screen name="sign-up" />
                 </Stack.Protected>
               </Stack>
               <CallOverlay />

@@ -18,7 +18,7 @@ import {
   WifiLow,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { BackHandler, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -42,7 +42,7 @@ const QUICK_REPLIES = ["Can't talk now. I'll call you back.", 'In a meeting, ple
 export function CallOverlay() {
   const phase = useCall((s) => s.phase);
   useEffect(() => {
-    if (phase === 'idle') return;
+    if (phase === 'idle' || Platform.OS !== 'android') return;
     // Android back must not silently drop a live call.
     const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => sub.remove();
