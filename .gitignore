@@ -1,0 +1,20 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+coverage/
+*.log
+.DS_Store
+# Expo
+.expo/
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/expo-env.d.ts
+*.apk
+*.aab
+# API local uploads
+apps/api/uploads/
+
+# pnpm content-addressed store (created here when the home store is on another volume)
+.pnpm-store/

@@ -1,0 +1,13 @@
+# Local dev: Postgres + LiveKit in dev mode (API key "devkey", secret "secret").
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: lc, POSTGRES_PASSWORD: lc, POSTGRES_DB: landconnect }
+    ports: ["5433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --dev --bind 0.0.0.0
+    ports: ["7880:7880", "7881:7881", "7882:7882/udp"]
+volumes:
+  pgdata:

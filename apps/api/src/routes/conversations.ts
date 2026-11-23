@@ -1,0 +1,113 @@
+import { type CallLogEntry, createRoomSchema, messagesQuerySchema, startConversationSchema } from '@landconnect/shared';
+import { and, desc, eq, inArray, lt, or } from 'drizzle-orm';
+import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { z } from 'zod';
+import { authenticate, can } from '../auth.ts';
+import { isBlocked, listConversations, memberIds, postMessage } from '../conversations.ts';
+import { db, schema } from '../db/client.ts';
+import { toMessage, toPublicUser } from '../dto.ts';
+import { forbidden, HttpError, notFound } from '../errors.ts';
+
+const { conversations, conversationMembers: members, messages, listings, users, calls } = schema;
+const params = z.object({ id: z.uuid() });
+
+export const conversationRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.addHook('preHandler', authenticate);
+
+  app.get('/conversations', async (req) => listConversations(req.user.id));
+
+  app.get('/conversations/:id', { schema: { params } }, async (req) => {
+    const [conv] = await listConversations(req.user.id, req.params.id);
+    if (!conv) throw notFound('Conversation not found');
+    return conv;
+  });
+
+  /** Enquire on a listing: one thread per (buyer, listing), created on first contact. */
+  app.post('/conversations', { schema: { body: startConversationSchema } }, async (req, reply) => {
+    const me = req.user.id;
+    const [listing] = await db.select().from(listings).where(eq(listings.id, req.body.listingId));
+    if (!listing) throw notFound('Listing not found');
+    if (listing.ownerId === me) throw new HttpError(400, 'This is your own listing');
+    if (await isBlocked(me, listing.ownerId)) throw forbidden("You can't contact this person");
+
+    const directKey = `${listing.id}:${[me, listing.ownerId].sort().join(':')}`;
+    const [created] = await db
+      .insert(conversations)
+      .values({ kind: 'direct', listingId: listing.id, createdBy: me, directKey })
+      .onConflictDoNothing({ target: conversations.directKey })
+      .returning();
+    if (created) {
+      await db.insert(members).values([
+        { conversationId: created.id, userId: me },
+        { conversationId: created.id, userId: listing.ownerId },
+      ]);
+      await postMessage(
+        created.id,
+        null,
+        `Enquiry about “${listing.title}”. Phone numbers stay hidden. Chat and call right here.`,
+        'system',
+      );
+      reply.code(201);
+    }
+    const id =
+      created?.id ?? (await db.select({ id: conversations.id }).from(conversations).where(eq(conversations.directKey, directKey)))[0]!.id;
+    const [conv] = await listConversations(me, id);
+    return conv;
+  });
+
+  /** Deal room: a group thread + group video meeting for a site-visit or negotiation. */
+  app.post('/conversations/rooms', { preHandler: can('seller', 'broker'), schema: { body: createRoomSchema } }, async (req, reply) => {
+    const ids = [...new Set([req.user.id, ...req.body.memberIds])];
+    const found = await db.select({ id: users.id }).from(users).where(inArray(users.id, ids));
+    if (found.length !== ids.length) throw new HttpError(400, 'Some members were not found');
+    const [room] = await db
+      .insert(conversations)
+      .values({ kind: 'room', title: req.body.title, listingId: req.body.listingId, createdBy: req.user.id })
+      .returning();
+    await db.insert(members).values(ids.map((userId) => ({ conversationId: room!.id, userId })));
+    await postMessage(room!.id, null, `${req.body.title} created. Start a meeting from the header when everyone is ready.`, 'system');
+    reply.code(201);
+    const [conv] = await listConversations(req.user.id, room!.id);
+    return conv;
+  });
+
+  app.get('/conversations/:id/messages', { schema: { params, querystring: messagesQuerySchema } }, async (req) => {
+    if (!(await memberIds(req.params.id)).includes(req.user.id)) throw notFound('Conversation not found');
+    const rows = await db
+      .select()
+      .from(messages)
+      .where(
+        and(eq(messages.conversationId, req.params.id), req.query.before ? lt(messages.createdAt, new Date(req.query.before)) : undefined),
+      )
+      .orderBy(desc(messages.createdAt))
+      .limit(req.query.limit);
+    return rows.map((m) => toMessage(m)); // newest first
+  });
+
+  app.get('/calls', async (req): Promise<CallLogEntry[]> => {
+    const me = req.user.id;
+    const rows = await db
+      .select({ c: calls, caller: users })
+      .from(calls)
+      .innerJoin(users, eq(users.id, calls.callerId))
+      .where(or(eq(calls.callerId, me), eq(calls.calleeId, me)))
+      .orderBy(desc(calls.createdAt))
+      .limit(100);
+    const calleeIds = [...new Set(rows.map((r) => r.c.calleeId))];
+    const callees = calleeIds.length ? await db.select().from(users).where(inArray(users.id, calleeIds)) : [];
+    const byId = new Map(callees.map((u) => [u.id, u]));
+    return rows.map(({ c, caller }) => {
+      const outgoing = c.callerId === me;
+      return {
+        id: c.id,
+        conversationId: c.conversationId,
+        kind: c.kind,
+        status: c.status,
+        direction: outgoing ? 'outgoing' : 'incoming',
+        peer: toPublicUser(outgoing ? byId.get(c.calleeId)! : caller),
+        startedAt: c.createdAt.toISOString(),
+        durationSec: c.answeredAt && c.endedAt ? Math.round((c.endedAt.getTime() - c.answeredAt.getTime()) / 1000) : null,
+      };
+    });
+  });
+};

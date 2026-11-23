@@ -1,0 +1,29 @@
+# Render blueprint for the API. Postgres lives on Supabase/Neon (free tiers don't expire), media on LiveKit Cloud.
+services:
+  - type: web
+    name: landconnect-api
+    runtime: node
+    plan: free
+    region: singapore # closest Render region to India
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --filter api...
+    preDeployCommand: pnpm --filter api db:migrate
+    startCommand: pnpm --filter api start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false

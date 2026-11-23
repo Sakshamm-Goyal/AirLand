@@ -1,0 +1,757 @@
+<meta charset="utf-8">
+<title>LandConnect Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: annotation column on the left, a live phone on the right; stacks phone-first under 900px */
+:root{
+  --bg:#EDF0EA; --fg:#17201B; --muted:#5C6961; --line:#D3DAD2; --panel:#FFFFFF;
+  --brand:#1C6A4E; --brand-ink:#FFFFFF; --brand-soft:#DCEFE5; --brand-txt:#17654A;
+  --accent:#B87A0C; --accent-soft:#F7EBD2; --accent-txt:#8A5A00;
+  --hdr:#1C6A4E; --hdr-ink:#FFFFFF;
+  --app:#F5F7F3; --surface:#FFFFFF; --chatbg:#E8ECE3; --out:#D6EEDF; --in:#FFFFFF; --from-l:36%;
+  --danger:#D23B3B; --ok:#1E9E5E; --bezel:#1A1F1C;
+  --map-bg:#E9EDE2; --map-field:#D6E3C4; --map-field2:#E8DEC4; --map-water:#A9CBE0; --map-road:#FFFFFF; --map-road-edge:#C9CFC3; --map-label:#6A7368;
+  --call:#0F1A15; --call-ink:#F2F6F3;
+  --f-ui:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-display:"Bricolage Grotesque", "Inter", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1311; --fg:#E4EBE6; --muted:#93A199; --line:#25302A; --panel:#151C18;
+  --brand:#2E9470; --brand-ink:#FFFFFF; --brand-soft:#173A2C; --brand-txt:#7FD3AE;
+  --accent:#E3AC45; --accent-soft:#3A2E14; --accent-txt:#F0C673;
+  --hdr:#17211C; --hdr-ink:#E4EBE6;
+  --app:#0C1310; --surface:#151E19; --chatbg:#0A100D; --out:#1E4A37; --in:#1B2620; --from-l:70%;
+  --danger:#F06060; --ok:#3CC983; --bezel:#000000;
+  --map-bg:#18201B; --map-field:#1F2D22; --map-field2:#2A2A1E; --map-water:#1D3A4C; --map-road:#36423A; --map-road-edge:#222B25; --map-label:#8C998F;
+  --call:#07100C; --call-ink:#F2F6F3; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1311; --fg:#E4EBE6; --muted:#93A199; --line:#25302A; --panel:#151C18;
+  --brand:#2E9470; --brand-ink:#FFFFFF; --brand-soft:#173A2C; --brand-txt:#7FD3AE;
+  --accent:#E3AC45; --accent-soft:#3A2E14; --accent-txt:#F0C673;
+  --hdr:#17211C; --hdr-ink:#E4EBE6;
+  --app:#0C1310; --surface:#151E19; --chatbg:#0A100D; --out:#1E4A37; --in:#1B2620; --from-l:70%;
+  --danger:#F06060; --ok:#3CC983; --bezel:#000000;
+  --map-bg:#18201B; --map-field:#1F2D22; --map-field2:#2A2A1E; --map-water:#1D3A4C; --map-road:#36423A; --map-road-edge:#222B25; --map-label:#8C998F;
+  --call:#07100C; --call-ink:#F2F6F3; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-ui);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer;padding:0;text-align:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.i.xs{width:14px;height:14px}.i.sm{width:18px;height:18px}
+
+/* page */
+.intro{max-width:1080px;margin:0 auto 24px}
+.intro h1{font-family:var(--f-display);font-size:clamp(28px,4vw,40px);margin:0;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;text-wrap:balance}
+.intro h1 .i{width:32px;height:32px;color:var(--brand-txt)}
+.intro p{max-width:64ch;color:var(--muted);line-height:1.55;margin:8px 0 0}
+.layout{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:start}
+.notes{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ctl,.now{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--app);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{padding:8px;border-radius:8px;font-weight:600;font-size:13px;text-align:center}
+.seg button.on{background:var(--brand);color:var(--brand-ink)}
+.hint{font-size:12.5px;color:var(--muted);margin:10px 0 0;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--app);padding:9px 12px;border-radius:10px;font-weight:600;font-size:13px;display:inline-flex;gap:8px;align-items:center}
+.btn:hover{border-color:var(--brand)}
+.now h3{font-family:var(--f-display);font-size:22px;margin:0 0 8px;letter-spacing:-.01em}
+.reqs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.reqs span{font-size:11.5px;font-weight:600;background:var(--brand-soft);color:var(--brand-txt);padding:3px 8px;border-radius:99px}
+.now ul{margin:0;padding-left:18px;display:grid;gap:8px;line-height:1.5;font-size:13.5px;max-width:62ch}
+.jump{display:flex;flex-wrap:wrap;gap:6px}
+.jump button{font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:99px}
+.jump button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.stage{display:flex;justify-content:center;min-width:0}
+
+/* phone */
+.phone{width:min(372px,100%);height:clamp(640px,90vh,780px);border:10px solid var(--bezel);border-radius:46px;background:var(--app);overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 30px 60px -30px rgba(0,0,0,.45)}
+.sbar{height:30px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:12px;font-weight:600;background:var(--hdr);color:var(--hdr-ink);font-variant-numeric:tabular-nums}
+.phone.dark .sbar{background:var(--call);color:var(--call-ink)}
+.phone.plain .sbar{background:var(--app);color:var(--fg)}
+.app{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;background:var(--app);color:var(--fg);font-size:14px}
+.hdr{display:flex;align-items:center;gap:6px;background:var(--hdr);color:var(--hdr-ink);padding:8px 8px 10px 14px;min-height:56px;flex:none}
+.hdr h2{flex:1;margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em;min-width:0}
+.hdr h2.sm{font-size:17px;font-weight:600}
+.hb{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none}
+.hb:hover{background:rgba(255,255,255,.12)}
+.hdr .back{margin-left:-8px}
+.who{flex:1;min-width:0;display:flex;flex-direction:column}
+.who b{font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who span{font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.body{flex:1;overflow-y:auto;min-height:0;overscroll-behavior:contain}
+.av{--h:150;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:hsl(var(--h) 32% 42%);color:#fff;font-weight:700;font-size:14px;flex:none}
+.av.xs{width:20px;height:20px;font-size:9px}.av.sm{width:34px;height:34px;font-size:12px}.av.lg{width:64px;height:64px;font-size:22px}.av.xl{width:104px;height:104px;font-size:36px}
+.av.room{background:var(--brand);color:#fff}
+.srch{margin:12px 14px 4px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:10px 14px;color:var(--muted);font-size:13.5px}
+.chips{display:flex;gap:8px;padding:10px 14px;overflow-x:auto;scrollbar-width:none}
+.chips.wrap{flex-wrap:wrap;padding:0}
+.chip{flex:none;padding:7px 13px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:500}
+.chip.on{background:var(--brand-soft);border-color:transparent;color:var(--brand-txt);font-weight:700}
+.feed{display:grid;gap:12px;padding:4px 14px 96px}
+.card{background:var(--surface);border-radius:16px;overflow:hidden;border:1px solid var(--line);cursor:pointer}
+.art{position:relative;background:
+  radial-gradient(circle at 80% 24%, #FFF4D2 0 5%, transparent 5.6%),
+  radial-gradient(ellipse 75% 34% at 24% 56%, var(--hill) 0 97%, transparent 100%),
+  repeating-linear-gradient(98deg, var(--f1) 0 12px, var(--f2) 12px 15px) bottom/100% 50% no-repeat,
+  linear-gradient(var(--sky), #F2E6CB) top/100% 50% no-repeat;max-width:100%}
+.tag{position:absolute;left:10px;top:10px;background:rgba(15,25,20,.74);color:#fff;font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px}
+.tag.r{left:auto;right:10px;background:#B87A0C}
+.tag.sold{left:auto;right:10px;background:#D23B3B}
+.count{position:absolute;right:10px;bottom:10px;background:rgba(15,25,20,.74);color:#fff;font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px}
+.cbody{padding:12px 14px 14px;display:grid;gap:5px}
+.price{font-weight:800;font-size:18px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.price small{font-size:11.5px;font-weight:700;color:var(--accent-txt);background:var(--accent-soft);padding:2px 7px;border-radius:6px}
+.price.lg{font-size:24px}
+.card h3{margin:0;font-size:15px;font-weight:600;line-height:1.3}
+.meta{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12.5px;min-width:0}
+.meta span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.by{display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:4px;flex-wrap:wrap}
+.dim{color:var(--muted)}
+.rb{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:var(--app);border:1px solid var(--line);color:var(--muted)}
+.rb.broker{background:var(--brand-soft);color:var(--brand-txt);border-color:transparent}
+.rb.seller{background:var(--accent-soft);color:var(--accent-txt);border-color:transparent}
+.fab{position:absolute;right:16px;bottom:84px;display:flex;align-items:center;gap:8px;background:var(--brand);color:var(--brand-ink);padding:14px 18px;border-radius:18px;font-weight:700;box-shadow:0 8px 20px -8px rgba(0,0,0,.45);z-index:3}
+.nav{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line);padding:6px 4px 10px;flex:none}
+.nav button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;font-weight:500;color:var(--muted)}
+.nav .pill{position:relative;width:56px;height:30px;border-radius:99px;display:grid;place-items:center}
+.nav button.on{color:var(--fg);font-weight:700}
+.nav button.on .pill{background:var(--brand-soft);color:var(--brand-txt)}
+.nav em{position:absolute;top:-3px;right:4px;background:var(--ok);color:#fff;font-style:normal;font-size:10px;font-weight:700;min-width:17px;height:17px;border-radius:99px;display:grid;place-items:center;padding:0 4px}
+
+/* listing */
+.pad{padding:16px;display:grid;gap:8px}
+.lt{font-size:18px;margin:0;line-height:1.3;text-wrap:balance}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:8px 0}
+.specs div{background:var(--surface);padding:10px 12px;min-width:0}
+.specs dt{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.specs dd{margin:2px 0 0;font-weight:600;font-size:13px}
+.pad h4{margin:10px 0 0;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.desc{margin:0;line-height:1.55}
+.mini{position:relative;height:150px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.mapsvg{position:absolute;inset:0;width:100%;height:100%}
+.m-bg{fill:var(--map-bg)}.m-f1{fill:var(--map-field)}.m-f2{fill:var(--map-field2)}
+.m-w{fill:none;stroke:var(--map-water);stroke-width:16;stroke-linecap:round}
+.m-re{fill:none;stroke:var(--map-road-edge)}.m-r{fill:none;stroke:var(--map-road)}
+.ml{font-size:11px;fill:var(--map-label);font-weight:700;font-family:var(--f-ui)}
+.approx{position:absolute;width:92px;height:92px;border-radius:50%;transform:translate(-50%,-50%);background:color-mix(in srgb,var(--brand) 22%,transparent);border:2px dashed var(--brand)}
+.mpin{position:absolute;transform:translate(-50%,-100%);pointer-events:none}
+.mpin .i{width:34px;height:34px;fill:#D23B3B;stroke:#fff;stroke-width:1.6}
+.note{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--muted);margin:0;line-height:1.4}
+.owner{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin-top:8px}
+.owner>div{display:grid;gap:4px;min-width:0}
+.owner .ph{display:flex;gap:5px;align-items:center;font-size:12px;color:var(--muted)}
+.abar{display:flex;gap:8px;padding:10px 12px 12px;background:var(--surface);border-top:1px solid var(--line);flex:none}
+.btn-primary{flex:1;background:var(--brand);color:var(--brand-ink);border-radius:12px;padding:13px;font-weight:700;display:flex;gap:8px;justify-content:center;align-items:center}
+.btn-sq{width:48px;border-radius:12px;border:1px solid var(--line);display:grid;place-items:center;color:var(--brand-txt);flex:none}
+.btn-ghost{flex:1;border:1px solid var(--line);border-radius:12px;padding:12px;font-weight:600;text-align:center}
+
+/* map */
+.mapwrap{flex:1;position:relative;overflow:hidden;min-height:0}
+.mp{position:absolute;transform:translate(-50%,-100%);background:var(--surface);color:var(--fg);font-weight:800;font-size:12px;padding:5px 9px;border-radius:99px;box-shadow:0 2px 8px rgba(0,0,0,.28);white-space:nowrap;font-variant-numeric:tabular-nums}
+.mp::after{content:"";position:absolute;left:50%;bottom:-4px;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:inherit}
+.mp.on{background:var(--brand);color:var(--brand-ink);z-index:2}
+.me{position:absolute;width:16px;height:16px;border-radius:50%;background:#2F7BEA;border:3px solid #fff;transform:translate(-50%,-50%);box-shadow:0 0 0 8px rgba(47,123,234,.22)}
+.sheet{position:absolute;left:12px;right:12px;bottom:12px;background:var(--surface);border-radius:16px;padding:10px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px -10px rgba(0,0,0,.45);cursor:pointer;z-index:3}
+.sheet .art{width:76px;border-radius:10px;flex:none}
+.sheet>div{min-width:0;display:grid;gap:2px}
+.sheet b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet .price{font-size:16px}
+
+/* chats */
+.clist{list-style:none;margin:0;padding:4px 0}
+.crow{display:flex;gap:12px;width:100%;padding:10px 14px;align-items:flex-start}
+.crow:hover{background:color-mix(in srgb,var(--fg) 4%,transparent)}
+.cm{flex:1;min-width:0;display:grid;gap:2px}
+.c1,.c2{display:flex;justify-content:space-between;gap:8px;align-items:center;min-width:0}
+.c1 b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+time{font-size:11.5px;color:var(--muted);flex:none}
+time.un{color:var(--ok);font-weight:700}
+.c2 span{color:var(--muted);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:4px;align-items:center}
+.c2 em{background:var(--ok);color:#fff;font-style:normal;font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:99px;display:grid;place-items:center;padding:0 6px;flex:none}
+.c3{display:flex;gap:4px;align-items:center;font-size:11.5px;color:var(--accent-txt);min-width:0}
+.c3 span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.e2e{display:flex;gap:6px;justify-content:center;align-items:center;font-size:12px;color:var(--muted);padding:16px;margin:0}
+
+/* chat */
+.pinned{display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line);width:100%;flex:none}
+.pinned .art{width:44px;border-radius:8px;flex:none}
+.pinned div{flex:1;min-width:0;display:grid}
+.pinned b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pinned span{font-size:12px;color:var(--accent-txt);font-weight:700}
+.meetbar{display:flex;gap:8px;align-items:center;justify-content:center;background:var(--brand-soft);color:var(--brand-txt);font-weight:700;padding:9px;font-size:13px;width:100%;flex:none}
+.msgs{background-color:var(--chatbg);background-image:radial-gradient(color-mix(in srgb,var(--fg) 7%,transparent) 1px,transparent 1.3px);background-size:18px 18px;padding:12px 10px;display:flex;flex-direction:column;gap:6px}
+.sys{align-self:center;max-width:90%;text-align:center;background:var(--accent-soft);color:var(--accent-txt);font-size:12px;padding:6px 10px;border-radius:8px;display:flex;gap:6px;align-items:center;line-height:1.4}
+.b{max-width:80%;padding:7px 10px 6px;border-radius:12px;line-height:1.4;font-size:14px;box-shadow:0 1px 1px rgba(0,0,0,.08);overflow-wrap:anywhere}
+.b.out{align-self:flex-end;background:var(--out);border-top-right-radius:4px}
+.b.in{align-self:flex-start;background:var(--in);border-top-left-radius:4px}
+.b time{float:right;margin:6px 0 -2px 10px;display:inline-flex;gap:3px;align-items:center;font-size:10.5px}
+.tk{color:var(--brand-txt)}
+.from{display:block;font-size:12px;font-weight:700;color:hsl(var(--h) 45% var(--from-l))}
+.callb{display:flex;gap:10px;align-items:center}
+.callb div{display:grid}
+.callb span{font-size:12px;color:var(--muted)}
+.callb>.i{width:34px;height:34px;padding:8px;border-radius:50%;background:color-mix(in srgb,var(--fg) 8%,transparent)}
+.callb time{align-self:flex-end;margin-left:6px}
+.typing{display:flex;gap:4px;padding:12px 14px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1s infinite}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes blink{50%{opacity:.25}}
+.composer{display:flex;gap:6px;align-items:center;padding:8px;background:var(--chatbg);flex:none}
+.composer input{flex:1;min-width:0;border:0;background:var(--surface);border-radius:99px;padding:11px 14px}
+.hb2{width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:var(--muted);flex:none}
+.send{width:44px;height:44px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;flex:none}
+
+/* calls tab */
+.newcall{display:flex;gap:12px;align-items:center;padding:14px;width:100%}
+.newcall div{display:grid;gap:2px}
+.newcall span{font-size:12.5px;color:var(--muted)}
+.sec{margin:8px 14px 4px;font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.krow{display:flex;gap:12px;align-items:center;padding:10px 8px 10px 14px}
+.krow b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.krow b.miss{color:var(--danger)}
+.kd{display:flex;gap:5px;align-items:center;font-size:12.5px;color:var(--muted)}
+.i.red{color:var(--danger)}.i.green{color:var(--ok)}
+.krow .hb2{color:var(--brand-txt)}
+
+/* profile */
+.pcard{display:flex;gap:14px;align-items:center;padding:18px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.pcard>div{display:grid;gap:4px;min-width:0}
+.pcard b{font-size:17px}
+.pcard .dim{font-size:12px;overflow-wrap:anywhere}
+.set{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--line);width:100%;flex-wrap:wrap}
+.set>div:first-child{display:grid;gap:2px;min-width:0;flex:1 1 150px}
+.set b{font-size:14px;font-weight:600}
+.set span{font-size:12px;color:var(--muted)}
+.seg2{display:flex;background:var(--app);border:1px solid var(--line);border-radius:9px;padding:2px}
+.seg2 button{padding:6px 9px;font-size:12px;border-radius:7px;font-weight:600;color:var(--muted)}
+.seg2 button.on{background:var(--brand);color:var(--brand-ink)}
+.tg{cursor:pointer;position:relative}
+.tg input{position:absolute;opacity:0;width:1px;height:1px}
+.tg i{width:42px;height:24px;border-radius:99px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.tg i::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.tg input:checked+i{background:var(--brand)}
+.tg input:checked+i::after{transform:translateX(18px)}
+.tg input:focus-visible+i{outline:2px solid var(--accent);outline-offset:2px}
+.logout{color:var(--danger);font-weight:700;padding:18px;width:100%;text-align:center}
+.empty{padding:16px;color:var(--muted);text-align:center;margin:0;line-height:1.5}
+.link{color:var(--brand-txt);font-weight:700;display:inline-flex;gap:4px;align-items:center}
+.blocked{flex:1;display:grid;place-items:center;align-content:center;gap:10px;padding:32px;text-align:center}
+.blocked .i{width:40px;height:40px;color:var(--muted)}
+.blocked h3{margin:0;font-size:18px}
+.blocked p{margin:0;color:var(--muted);line-height:1.5}
+
+/* create */
+.form{padding:14px;display:grid;gap:14px;align-content:start}
+.fld{display:grid;gap:6px}
+.fld>span{font-size:12px;font-weight:600;color:var(--muted)}
+.fld input,.fld select,.fld textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:11px 12px;font-size:14px}
+.fld textarea{resize:vertical}
+.two{display:grid;grid-template-columns:1.3fr 1fr;gap:10px}
+.pp{font-style:normal;font-size:12.5px;color:var(--accent-txt);font-weight:700;min-height:1.1em}
+.photos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.photos .art{border-radius:10px}
+.addph{height:76px;border:1.5px dashed var(--brand);border-radius:10px;display:grid;place-items:center;align-content:center;gap:4px;color:var(--brand-txt);font-size:11px;font-weight:700;text-align:center}
+.pick{position:relative;height:170px;border-radius:12px;overflow:hidden;border:1px solid var(--line);cursor:crosshair}
+.pickhint{position:absolute;left:8px;top:8px;background:rgba(15,25,20,.74);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;pointer-events:none}
+.coords{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;gap:8px;flex-wrap:wrap}
+.err{color:var(--danger);font-size:13px;margin:0;min-height:1em;font-weight:600}
+.form .set{border:1px solid var(--line);border-radius:12px}
+
+/* welcome */
+.welcome{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.wl-b{padding:18px 18px 24px;display:grid;gap:12px}
+.logo{display:flex;gap:6px;align-items:center;color:var(--brand-txt);font-weight:800;font-size:15px}
+.welcome h1{font-family:var(--f-display);font-size:24px;line-height:1.15;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.lbl2{font-size:12px;font-weight:600;color:var(--muted)}
+.roles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.role{border:1.5px solid var(--line);border-radius:12px;padding:10px 8px;display:grid;gap:2px;background:var(--surface);align-content:start}
+.role b{font-size:14px}
+.role span{font-size:11px;color:var(--muted);line-height:1.3}
+.role.on{border-color:var(--brand);background:var(--brand-soft)}
+.fine{text-align:center;font-size:13px;color:var(--muted);margin:0}
+
+/* call screens */
+.callscr{flex:1;display:flex;flex-direction:column;background:radial-gradient(120% 70% at 50% 25%,color-mix(in srgb,var(--brand) 45%,var(--call)) 0%,var(--call) 70%);color:var(--call-ink);position:relative;overflow:hidden}
+.ctop{display:flex;gap:6px;align-items:center;justify-content:center;font-size:12.5px;padding:14px;position:relative;z-index:2}
+.cmid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:0 24px;position:relative;z-index:1}
+.cmid h2{margin:10px 0 0;font-size:26px;font-weight:600}
+.cmid p{margin:0;opacity:.85;display:flex;gap:5px;align-items:center}
+.ctx{font-size:13px;background:rgba(255,255,255,.1);padding:6px 10px;border-radius:8px}
+.cd{font-size:12.5px;font-variant-numeric:tabular-nums}
+.pulse{animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}100%{box-shadow:0 0 0 26px rgba(255,255,255,0)}}
+.cbtm{display:flex;justify-content:center;gap:72px;padding:20px 0 40px;position:relative;z-index:2}
+.cbw{display:grid;justify-items:center;gap:8px;font-size:13px}
+.cb{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;color:#fff}
+.cb .i{width:28px;height:28px}
+.cb.end{background:#E0413A}
+.cb.end .i{transform:rotate(135deg)}
+.cb.ok{background:#22A45D}
+.qr{align-self:center;font-size:13px;background:rgba(255,255,255,.12);padding:8px 14px;border-radius:99px;position:relative;z-index:2}
+.ctrls{display:flex;justify-content:center;align-items:center;gap:14px;padding:18px 12px 30px;position:relative;z-index:2;background:linear-gradient(transparent,rgba(0,0,0,.45))}
+.cc{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;color:#fff}
+.cc.on{background:#fff;color:#111}
+.callscr.vid .ctop{background:linear-gradient(rgba(0,0,0,.5),transparent)}
+.remote{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(160deg,hsl(var(--h) 30% 32%),hsl(var(--h) 25% 12%))}
+.remote .rl{position:absolute;left:0;right:0;top:58%;text-align:center;font-size:12px;opacity:.65}
+.self{position:absolute;right:14px;top:56px;width:92px;height:130px;border-radius:14px;background:linear-gradient(160deg,#5B7A6A,#25352C);display:grid;place-items:center;align-content:center;gap:2px;font-size:12px;font-weight:600;z-index:3;border:2px solid rgba(255,255,255,.3);color:#fff}
+.self.off{background:#222}
+.grid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;align-content:center}
+.tile{aspect-ratio:3/4;max-width:100%;border-radius:14px;background:linear-gradient(160deg,hsl(var(--h) 30% 32%),hsl(var(--h) 25% 14%));display:grid;place-items:center;align-content:center;gap:8px;font-size:12px;color:#fff}
+.tile span{display:flex;gap:4px;align-items:center}
+.tile.add{background:rgba(255,255,255,.08);border:1.5px dashed rgba(255,255,255,.3);color:inherit}
+
+.toast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);background:var(--fg);color:var(--bg);font-size:12.5px;padding:9px 14px;border-radius:10px;width:max-content;max-width:86%;text-align:center;z-index:20;box-shadow:0 8px 20px -8px rgba(0,0,0,.5);line-height:1.4}
+
+@media (max-width:900px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .stage{order:-1}
+}
+@media (prefers-reduced-motion:reduce){.pulse,.typing i{animation:none}.tg i,.tg i::after{transition:none}}
+</style>
+
+<header class="intro">
+  <h1><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>LandConnect</h1>
+  <p>A clickable prototype of the land marketplace. Browse plots, list land with a map pin, chat about a listing and call the other person in the app. Nobody sees a phone number. The data is mock data, and calls here are simulated; the real app runs them over LiveKit.</p>
+</header>
+
+<div class="layout">
+  <aside class="notes" aria-label="Prototype controls and notes">
+    <div class="ctl">
+      <div class="lbl">View as</div>
+      <div class="seg" role="group" aria-label="Role">
+        <button data-act="role" data-v="buyer">Buyer</button>
+        <button data-act="role" data-v="seller">Seller</button>
+        <button data-act="role" data-v="broker">Broker</button>
+      </div>
+      <p class="hint">Role-based access: Buyers can't list land. Sellers and Brokers get the List land button, deal rooms and My listings.</p>
+    </div>
+    <div class="ctl">
+      <div class="lbl">Ring this phone</div>
+      <div class="row">
+        <button class="btn" data-act="sim" data-media="video"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>Incoming video call</button>
+        <button class="btn" data-act="sim" data-media="audio"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>Incoming voice call</button>
+      </div>
+      <p class="hint">Accept, decline, reply with a message, or let it ring for 30 seconds to see a missed call. Ring it again during a call to see busy handling.</p>
+    </div>
+    <section class="now" id="now" aria-live="polite"></section>
+    <div class="ctl">
+      <div class="lbl">Jump to screen</div>
+      <div class="jump" id="jump"></div>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <div class="phone" id="phone">
+      <div class="sbar"><span id="clock">9:41</span><span>5G ▮▮▮ 82%</span></div>
+      <div class="app" id="app"></div>
+      <div class="toast" id="toast" role="status" hidden></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const P={
+ back:'<path d="M15 18l-6-6 6-6"/>',x:'<path d="M18 6L6 18M6 6l12 12"/>',
+ search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+ grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+ map:'<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
+ chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+ phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+ video:'<rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/>',
+ camOff:'<path d="M16 16v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h2M10 6h5a1 1 0 0 1 1 1v3l6-3v10"/><path d="M2 2l20 20"/>',
+ mic:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/>',
+ micOff:'<path d="M9 9v1a3 3 0 0 0 5.1 2.1M15 9.3V5a3 3 0 0 0-5.9-.8"/><path d="M19 10a7 7 0 0 1-1.2 3.9M5 10a7 7 0 0 0 10.6 6M12 17v5M2 2l20 20"/>',
+ flip:'<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
+ speaker:'<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ pin:'<path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+ lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+ shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
+ arrIn:'<path d="M17 7L7 17M7 8v9h9"/>',arrOut:'<path d="M7 17L17 7M8 7h9v9"/>',
+ send:'<path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>',
+ clip:'<path d="M21 12l-8.5 8.5a5 5 0 0 1-7-7L14 5a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 8"/>',
+ users:'<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/>',
+ camera:'<path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/>',
+ heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
+ chev:'<path d="M9 6l6 6-6 6"/>',ticks:'<path d="M2 12.5l4 4 8-8.5M9 15.5l1 1 8-8.5"/>',
+ sliders:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+ target:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>'
+};
+const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hue=s=>{let h=0;for(const ch of s)h=(h*31+ch.charCodeAt(0))%360;return h};
+const ini=n=>n.split(/\s+/).filter(w=>/\w/.test(w)).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+const av=(n,c='')=>`<span class="av ${c}" style="--h:${hue(n)}">${ini(n)}</span>`;
+const now=()=>new Date().toTimeString().slice(0,5);
+const fmtDur=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+const trim=x=>x.toFixed(2).replace(/\.?0+$/,'');
+const inr=n=>n>=1e7?`₹ ${trim(n/1e7)} Cr`:n>=1e5?`₹ ${trim(n/1e5)} L`:'₹ '+n.toLocaleString('en-IN');
+
+const ME='Aditi Sharma';
+const RL={buyer:'Buyer',seller:'Seller',broker:'Broker'};
+const RD={buyer:'Browse, chat, call owners',seller:'List and sell your land',broker:'List for clients, run deal rooms'};
+const TYPES=['Agricultural','Residential','Farmhouse','Commercial'];
+
+const L=[
+ {id:'l1',title:'2.5 acre farmland near Devanahalli',type:'Agricultural',area:'2.5 acre',price:'₹ 1.12 Cr',per:'₹ 44.8 L / acre',loc:'Devanahalli, Bengaluru Rural',owner:'Ramesh K.',ownerRole:'Seller',posted:'2 d',art:['#9CC8E6','#7FA650','#6C9142','#5E7F3B'],x:30,y:24,road:'30 ft panchayat road',water:'Borewell, 4 in yield',titleDoc:'RTC + Khata clear',zone:'Agricultural',desc:'Red loamy soil with 40 mango trees and a working borewell. Fenced on three sides. 12 minutes from the airport road.'},
+ {id:'l2',title:'East-facing residential plot, BMRDA approved',type:'Residential',area:'2,400 sq ft',price:'₹ 58 L',per:'₹ 2,417 / sq ft',loc:'Sarjapur Road, Bengaluru',owner:'Priya Estates',ownerRole:'Broker',verified:true,posted:'5 h',art:['#B8D3E8','#C9B48A','#B9A274','#8FA36B'],x:70,y:64,road:'40 ft layout road',water:'Municipal line',titleDoc:'e-Khata, BMRDA',zone:'Residential',desc:'Corner plot in a gated layout with underground drainage and street lights. Ready for registration.'},
+ {id:'l3',title:'Farmhouse land with lake view',type:'Farmhouse',area:'20 guntha',price:'₹ 36 L',per:'₹ 1.8 L / guntha',loc:'Kanakapura Road, Ramanagara',owner:'Anand Rao',ownerRole:'Seller',posted:'1 w',art:['#F2C9A0','#6E9B5A','#5D8A4B','#4E6E74'],x:22,y:72,road:'20 ft mud road',water:'Lake frontage',titleDoc:'RTC clear',zone:'Agricultural',desc:'Gentle slope down to a seasonal lake. Suits a weekend farmhouse. Conversion paperwork not started.'},
+ {id:'l4',title:'Commercial corner plot on NH 44',type:'Commercial',area:'12,000 sq ft',price:'₹ 2.4 Cr',per:'₹ 2,000 / sq ft',loc:'Attibele, Hosur Road',owner:'Priya Estates',ownerRole:'Broker',verified:true,posted:'3 d',art:['#C7D6E2','#BBA98A','#AD9A79','#8D8F86'],x:78,y:30,road:'Faces highway service road',water:'Borewell',titleDoc:'DC converted, Khata',zone:'Commercial',desc:'Corner plot with 120 ft highway frontage. Suits a showroom, warehouse or fuel station.'},
+ {id:'l5',title:'Coconut grove, 4 acres with drip',type:'Agricultural',area:'4 acre',price:'₹ 96 L',per:'₹ 24 L / acre',loc:'Tiptur, Tumakuru',owner:'Lakshmi Devi',ownerRole:'Seller',posted:'4 d',art:['#A6D0E4','#5E9446','#4F823A','#3F6B33'],x:44,y:44,road:'15 ft farm road',water:'Two open wells',titleDoc:'RTC clear',zone:'Agricultural',desc:'280 yielding coconut palms with drip irrigation in place. Yearly copra income records available.'}
+];
+const SYS='Enquiry started for this listing. Phone numbers stay hidden: chat and call here.';
+const C=[
+ {id:'c1',name:'Ramesh K.',role:'Seller',listing:'l1',time:'10:42',unread:2,msgs:[
+  {sys:SYS},
+  {me:true,text:'Hi, is the farmland still available? Does the borewell run all year?',time:'10:31'},
+  {text:'Yes, available. The borewell gives water through summer, 4 inch yield.',time:'10:38'},
+  {text:'You can visit on Saturday. Shall we do a quick video call first? I can show you the plot.',time:'10:42'}]},
+ {id:'c2',name:'Priya Estates',role:'Broker',listing:'l2',time:'Yesterday',unread:0,msgs:[
+  {sys:SYS},
+  {me:true,text:'Is the price negotiable?',time:'17:58'},
+  {call:{media:'audio',label:'4:12'},time:'18:05'},
+  {text:'Sharing the approved layout plan after our call. The owner is open to ₹ 55 L for a quick close.',time:'18:20'}]},
+ {id:'c3',name:'Site visit · Devanahalli farm',room:true,members:['Ramesh K.','Priya Estates','You'],role:'Deal room',listing:'l1',time:'Mon',unread:1,msgs:[
+  {sys:'Priya Estates created this deal room for “2.5 acre farmland near Devanahalli”.'},
+  {from:'Priya Estates',text:'Saturday 10 AM site visit works for everyone?',time:'19:02'},
+  {from:'Ramesh K.',text:'Yes. I will bring the RTC and the survey sketch.',time:'19:10'}]}
+];
+const K=[
+ {name:'Priya Estates',chat:'c2',media:'audio',dir:'out',status:'answered',when:'Yesterday, 18:05',dur:'4:12'},
+ {name:'Ramesh K.',chat:'c1',media:'video',dir:'in',status:'missed',when:'Yesterday, 11:20'},
+ {name:'Site visit · Devanahalli farm',chat:'c3',media:'video',dir:'out',status:'answered',when:'Mon, 19:30',dur:'18:40'}
+];
+const REPLIES=['Sure, that works for me.','Let me check with the family and confirm by evening.','I can share the survey sketch on the call.','Yes. Road access is from the east side.'];
+
+const S={role:'buyer',screen:'explore',params:{},history:[],filter:'All',mapSel:'l1',newType:'Agricultural',pin:{x:55,y:45},
+ priv:{phone:'nobody',calls:'chatted',approx:true,read:true},call:null,returnTo:null,muted:false,camOff:false,front:true,speaker:false,r:0};
+
+const lst=id=>L.find(l=>l.id===id);
+const chatById=id=>C.find(c=>c.id===id);
+const unread=()=>C.reduce((a,c)=>a+c.unread,0);
+const coords=()=>`${(13.30-S.pin.y*0.0012).toFixed(4)}° N, ${(77.62+S.pin.x*0.0016).toFixed(4)}° E`;
+const art=(l,h,inner='')=>`<div class="art" style="height:${h}px;--sky:${l.art[0]};--f1:${l.art[1]};--f2:${l.art[2]};--hill:${l.art[3]}">${inner}</div>`;
+const badge=l=>`<span class="rb ${l.ownerRole.toLowerCase()}">${l.verified?ic('shield','xs'):''}${l.ownerRole}</span>`;
+const backBtn=(i='back')=>`<button class="hb back" data-act="back" aria-label="${i==='x'?'Close':'Back'}">${ic(i)}</button>`;
+const hdr=(t,extra='')=>`<header class="hdr"><h2>${t}</h2>${extra}<button class="hb" data-go="profile" aria-label="Profile and privacy">${av(ME,'sm')}</button></header>`;
+const TABS=[['explore','Explore','grid'],['map','Map','map'],['chats','Chats','chat'],['calls','Calls','phone']];
+const nav=a=>`<nav class="nav" aria-label="Main">${TABS.map(([k,t,i])=>`<button data-act="tab" data-v="${k}" class="${a===k?'on':''}" ${a===k?'aria-current="page"':''}><span class="pill">${ic(i)}${k==='chats'&&unread()?`<em>${unread()}</em>`:''}</span>${t}</button>`).join('')}</nav>`;
+
+const mapSvg=()=>`<svg class="mapsvg" viewBox="0 0 360 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<rect class="m-bg" width="360" height="420"/>
+<rect class="m-f1" x="18" y="24" width="140" height="100" rx="8"/><rect class="m-f2" x="200" y="16" width="146" height="112" rx="8"/>
+<rect class="m-f2" x="20" y="166" width="146" height="96" rx="8"/><rect class="m-f1" x="204" y="168" width="140" height="150" rx="8"/>
+<rect class="m-f1" x="18" y="300" width="150" height="104" rx="8"/><rect class="m-f2" x="204" y="350" width="140" height="60" rx="8"/>
+<path class="m-w" d="M-10 280 C 70 250, 120 320, 196 300 S 320 250, 380 280"/>
+<path class="m-re" stroke-width="13" d="M0 146 H360 M184 0 V420"/><path class="m-r" stroke-width="8" d="M0 146 H360 M184 0 V420"/>
+<path class="m-re" stroke-width="8" d="M0 60 L360 400"/><path class="m-r" stroke-width="4" d="M0 60 L360 400"/>
+<text class="ml" x="194" y="139">NH 44</text><text class="ml" x="26" y="18">Devanahalli</text><text class="ml" x="250" y="344">Hoskote</text><text class="ml" x="30" y="296">Kanakapura Rd</text>
+</svg>`;
+
+const card=l=>`<article class="card" data-go="listing" data-id="${l.id}" tabindex="0" aria-label="${esc(l.title)}, ${l.price}">
+ ${art(l,148,`<span class="tag">${l.type}</span>${l.sold?'<span class="tag sold">Sold</span>':l.mine?'<span class="tag r">Your listing</span>':''}`)}
+ <div class="cbody">
+  <div class="price">${l.price}<small>${l.per}</small></div>
+  <h3>${esc(l.title)}</h3>
+  <div class="meta">${ic('pin','xs')}<span>${esc(l.loc)} · ${l.area}</span></div>
+  <div class="by">${av(l.owner,'xs')}<span>${esc(l.owner)}</span>${badge(l)}<span class="dim">· ${l.posted}</span></div>
+ </div></article>`;
+
+const preview=m=>m.sys?esc(m.sys):m.call?`${ic(m.call.media==='video'?'video':'phone','xs')}${m.call.media==='video'?'Video':'Voice'} call · ${m.call.label}`:(m.me?'You: ':m.from?m.from.split(' ')[0]+': ':'')+esc(m.text);
+const bubble=m=>m.sys?`<div class="sys">${ic('lock','xs')}<span>${esc(m.sys)}</span></div>`
+ :m.call?`<div class="b ${m.me?'out':'in'} callb">${ic(m.call.media==='video'?'video':'phone')}<div><b>${m.call.media==='video'?'Video':'Voice'} call</b><span>${m.call.label}</span></div><time>${m.time}</time></div>`
+ :`<div class="b ${m.me?'out':'in'}">${m.from?`<span class="from" style="--h:${hue(m.from)}">${esc(m.from)}</span>`:''}${esc(m.text)}<time>${m.time}${m.me?ic('ticks','xs tk'):''}</time></div>`;
+
+const SCREENS={
+welcome(){return `<div class="welcome">${art(L[0],210)}
+ <div class="wl-b">
+  <div class="logo">${ic('pin')}LandConnect</div>
+  <h1>Find land. Talk to the owner. Keep your number private.</h1>
+  <div class="lbl2">I am a</div>
+  <div class="roles">${['buyer','seller','broker'].map(r=>`<button class="role ${S.role===r?'on':''}" data-act="role" data-v="${r}" aria-pressed="${S.role===r}"><b>${RL[r]}</b><span>${RD[r]}</span></button>`).join('')}</div>
+  <label class="fld"><span>Email or mobile</span><input id="w-id" value="aditi@example.com" autocomplete="off"></label>
+  <label class="fld"><span>Password</span><input id="w-pw" type="password" value="demo-password"></label>
+  ${S.role==='broker'?`<label class="fld"><span>RERA agent registration no.</span><input id="w-lic" value="PRM/KA/RERA/1251/AG/DEMO-0042"></label>`:''}
+  <button class="btn-primary" data-act="signup">Create account</button>
+  <p class="fine">Already registered? <button class="link" data-act="signup">Log in</button></p>
+ </div></div>`},
+
+explore(){const f=S.filter;const items=L.filter(l=>f==='All'||l.type===f);
+ return `${hdr('LandConnect',`<button class="hb" data-act="noop" data-msg="Search: GET /listings?q=" aria-label="Search">${ic('search')}</button>`)}
+ <div class="body">
+  <div class="srch">${ic('search','sm')}<span>Search village, taluk or city</span></div>
+  <div class="chips">${['All',...TYPES].map(c=>`<button class="chip ${f===c?'on':''}" data-act="filter" data-v="${c}" aria-pressed="${f===c}">${c}</button>`).join('')}</div>
+  <div class="feed">${items.map(card).join('')||'<p class="empty">No listings of this type yet.</p>'}</div>
+ </div>
+ ${S.role!=='buyer'?`<button class="fab" data-go="create">${ic('plus')}<span>List land</span></button>`:''}
+ ${nav('explore')}`},
+
+listing({id}){const l=lst(id);
+ const acts=l.mine?`<button class="btn-ghost" data-act="noop" data-msg="Edit opens this form pre-filled (PATCH /listings/:id)">Edit listing</button><button class="btn-primary" data-act="sold" data-id="${l.id}">${l.sold?'Relist':'Mark as sold'}</button>`
+  :`<button class="btn-primary" data-act="enquire" data-id="${l.id}">${ic('chat')}Chat with ${l.ownerRole.toLowerCase()}</button><button class="btn-sq" data-act="call" data-listing="${l.id}" data-media="audio" aria-label="Voice call ${esc(l.owner)}">${ic('phone')}</button><button class="btn-sq" data-act="call" data-listing="${l.id}" data-media="video" aria-label="Video call ${esc(l.owner)}">${ic('video')}</button>`;
+ return `<header class="hdr">${backBtn()}<h2 class="sm">Listing</h2><button class="hb" data-act="noop" data-msg="Saved to your list" aria-label="Save listing">${ic('heart')}</button></header>
+ <div class="body">${art(l,210,`<span class="tag">${l.type}</span><span class="count">1 / 6</span>`)}
+ <section class="pad">
+  <div class="price lg">${l.price}<small>${l.per}</small></div>
+  <h1 class="lt">${esc(l.title)}</h1>
+  <div class="meta">${ic('pin','xs')}<span>${esc(l.loc)}</span></div>
+  <dl class="specs">${[['Area',l.area],['Land type',l.type],['Road access',l.road],['Water',l.water],['Title',l.titleDoc],['Zoning',l.zone]].map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+  <h4>About this land</h4><p class="desc">${esc(l.desc)}</p>
+  <h4>Location</h4>
+  <div class="mini">${mapSvg()}${l.mine?`<span class="mpin" style="left:${l.x}%;top:${l.y}%">${ic('pin')}</span>`:`<span class="approx" style="left:${l.x}%;top:${l.y}%"></span>`}</div>
+  <p class="note">${ic('lock','xs')}${l.mine?'Buyers see a 1 km area until they enquire.':'Approximate area. The owner can share the exact pin in chat.'}</p>
+  <div class="owner">${av(l.owner)}<div><div><b>${esc(l.owner)}</b> ${badge(l)}</div><span class="ph">${ic('lock','xs')}Phone hidden · chat and call in the app</span></div></div>
+ </section></div>
+ <div class="abar">${acts}</div>`},
+
+map(){const sel=lst(S.mapSel)||L[0];
+ return `${hdr('Map',`<button class="hb" data-act="noop" data-msg="Filters: price, area, land type" aria-label="Filters">${ic('sliders')}</button>`)}
+ <div class="mapwrap">${mapSvg()}<span class="me" style="left:50%;top:52%" aria-label="Your location"></span>
+  ${L.map(l=>`<button class="mp ${l.id===sel.id?'on':''}" style="left:${l.x}%;top:${l.y}%" data-act="mapsel" data-v="${l.id}" aria-label="${esc(l.title)}, ${l.price}">${l.price.replace('₹ ','₹')}</button>`).join('')}
+  <div class="sheet" data-go="listing" data-id="${sel.id}" tabindex="0">${art(sel,64)}<div><div class="price">${sel.price}</div><b>${esc(sel.title)}</b><div class="meta"><span>${sel.area} · ${esc(sel.loc)}</span></div></div></div>
+ </div>${nav('map')}`},
+
+chats(){return `${hdr('Chats',S.role!=='buyer'?`<button class="hb" data-act="newroom" aria-label="New deal room">${ic('users')}</button>`:'')}
+ <div class="body">
+  <div class="srch">${ic('search','sm')}<span>Search chats</span></div>
+  <ul class="clist">${C.map(c=>{const l=lst(c.listing);const m=c.msgs[c.msgs.length-1];
+   return `<li><button class="crow" data-go="chat" data-id="${c.id}">${c.room?`<span class="av room">${ic('users')}</span>`:av(c.name)}<div class="cm"><div class="c1"><b>${esc(c.name)}</b><time class="${c.unread?'un':''}">${c.time}</time></div><div class="c2"><span>${preview(m)}</span>${c.unread?`<em>${c.unread}</em>`:''}</div><div class="c3">${ic('pin','xs')}<span>${esc(l.title)}</span></div></div></button></li>`}).join('')}</ul>
+  <p class="e2e">${ic('lock','xs')}Your phone number never appears in chats or calls.</p>
+ </div>${nav('chats')}`},
+
+chat({id}){const c=chatById(id);c.unread=0;const l=lst(c.listing);
+ const callBtns=c.room?`<button class="hb" data-act="call" data-chat="${c.id}" data-media="video" aria-label="Start meeting">${ic('video')}</button>`
+  :`<button class="hb" data-act="call" data-chat="${c.id}" data-media="video" aria-label="Video call ${esc(c.name)}">${ic('video')}</button><button class="hb" data-act="call" data-chat="${c.id}" data-media="audio" aria-label="Voice call ${esc(c.name)}">${ic('phone')}</button>`;
+ return `<header class="hdr">${backBtn()}${c.room?`<span class="av room sm">${ic('users','sm')}</span>`:av(c.name,'sm')}<div class="who"><b>${esc(c.name)}</b><span>${c.room?c.members.join(', '):c.role+' · online'}</span></div>${callBtns}</header>
+ <button class="pinned" data-go="listing" data-id="${l.id}">${art(l,40)}<div><b>${esc(l.title)}</b><span>${l.price} · ${l.area}</span></div>${ic('chev','xs')}</button>
+ ${c.room?`<button class="meetbar" data-act="call" data-chat="${c.id}" data-media="video">${ic('video','sm')}Start or join the meeting</button>`:''}
+ <div class="msgs body" id="msgs">${c.msgs.map(bubble).join('')}${c.typing?'<div class="b in typing" aria-label="typing"><i></i><i></i><i></i></div>':''}</div>
+ <form class="composer" id="composer" data-chat="${c.id}"><button type="button" class="hb2" data-act="noop" data-msg="Attach a photo or share the exact pin" aria-label="Attach">${ic('clip')}</button><input id="msg" autocomplete="off" placeholder="Message" aria-label="Message"><button class="send" aria-label="Send">${ic('send','sm')}</button></form>`},
+
+calls(){return `${hdr('Calls')}
+ <div class="body">
+  <button class="newcall" data-act="call" data-chat="c3" data-media="video"><span class="av room">${ic('users')}</span><div><b>Start a meeting room</b><span>Group video with everyone in a deal room</span></div></button>
+  <h5 class="sec">Recent</h5>
+  <ul class="clist">${K.map(k=>{const bad=k.status==='missed'||k.status==='declined';
+   return `<li class="krow">${k.chat==='c3'?`<span class="av room">${ic('users')}</span>`:av(k.name)}<div class="cm"><b class="${bad?'miss':''}">${esc(k.name)}</b><span class="kd">${ic(k.dir==='in'?'arrIn':'arrOut','xs '+(bad?'red':'green'))}${k.when}${k.dur?' · '+k.dur:''}${k.status!=='answered'?' · '+k.status:''}</span></div><button class="hb2" data-act="call" data-chat="${k.chat}" data-media="${k.media}" aria-label="Call back ${esc(k.name)}">${ic(k.media==='video'?'video':'phone')}</button></li>`}).join('')}</ul>
+ </div>${nav('calls')}`},
+
+profile(){const r=S.role,pv=S.priv;
+ const seg=(k,o)=>`<div class="seg2" role="group">${o.map(([v,t])=>`<button data-act="priv" data-k="${k}" data-v="${v}" class="${pv[k]===v?'on':''}" aria-pressed="${pv[k]===v}">${t}</button>`).join('')}</div>`;
+ const mine=L.filter(l=>l.mine);
+ return `<header class="hdr">${backBtn()}<h2 class="sm">Profile and privacy</h2></header>
+ <div class="body">
+  <div class="pcard">${av(ME,'lg')}<div><div><b>${ME}</b> <span class="rb ${r}">${r==='broker'?ic('shield','xs'):''}${RL[r]}</span></div><span class="dim">${r==='broker'?'RERA PRM/KA/RERA/1251/AG/DEMO-0042 · verified':'Member since Nov 2026'}</span></div></div>
+  <h5 class="sec">Privacy</h5>
+  <div class="set"><div><b>Who can see my phone number</b><span>Chats and calls never need it.</span></div>${seg('phone',[['nobody','Nobody'],['shared','Chats I share with']])}</div>
+  <div class="set"><div><b>Who can call me</b><span>Strangers can't call you.</span></div>${seg('calls',[['chatted','People I chat with'],['nobody','Nobody']])}</div>
+  <label class="set tg"><div><b>Approximate location on my listings</b><span>Show a 1 km area until a buyer enquires.</span></div><input type="checkbox" id="t-approx" data-act="tog" data-k="approx" ${pv.approx?'checked':''}><i></i></label>
+  <label class="set tg"><div><b>Read receipts</b><span>Show when you've read a message.</span></div><input type="checkbox" id="t-read" data-act="tog" data-k="read" ${pv.read?'checked':''}><i></i></label>
+  <button class="set" data-act="noop" data-msg="Blocking stops messages and calls both ways"><div><b>Blocked people</b><span>0 blocked</span></div>${ic('chev','xs')}</button>
+  ${r!=='buyer'?`<h5 class="sec">My listings</h5>${mine.length?`<div class="feed" style="padding-bottom:8px">${mine.map(card).join('')}</div>`:`<p class="empty">You haven't listed any land yet.<br><button class="link" data-go="create">List your first plot</button></p>`}`:''}
+  <button class="logout" data-act="logout">Log out</button>
+ </div>`},
+
+create(){if(S.role==='buyer')return `<header class="hdr">${backBtn('x')}<h2 class="sm">List your land</h2></header>
+ <div class="blocked">${ic('lock')}<h3>Only sellers and brokers can list land</h3><p>The API returns 403 for buyers on POST /listings, and the app hides the button.</p><button class="btn-ghost" data-act="role" data-v="seller">Switch to Seller</button></div>`;
+ const b=S.role==='broker';
+ return `<header class="hdr">${backBtn('x')}<h2 class="sm">List your land</h2></header>
+ <div class="body form">
+  <div class="photos"><button type="button" class="addph" data-act="noop" data-msg="expo-image-picker, resized to 1600px, uploaded to a signed URL">${ic('camera')}<span>Add photos</span></button>${[L[0],L[2],L[4]].map(l=>art(l,76)).join('')}</div>
+  <label class="fld"><span>Title</span><input id="f-title" placeholder="e.g. 3 acre mango farm with borewell"></label>
+  <div class="fld"><span>Land type</span><div class="chips wrap">${TYPES.map(t=>`<button type="button" class="chip ${S.newType===t?'on':''}" data-act="ltype" data-v="${t}">${t}</button>`).join('')}</div></div>
+  <div class="two"><label class="fld"><span>Area</span><input id="f-area" inputmode="decimal" placeholder="2.5"></label><label class="fld"><span>Unit</span><select id="f-unit">${['acre','guntha','cent','sq ft','sq yd','hectare'].map(u=>`<option>${u}</option>`).join('')}</select></label></div>
+  <label class="fld"><span>Asking price (₹)</span><input id="f-price" inputmode="numeric" placeholder="11200000"><em class="pp" id="pp"></em></label>
+  ${b?`<label class="fld"><span>Land owner you represent (kept private)</span><input id="f-client" placeholder="Owner's name"></label>`:''}
+  <label class="fld"><span>Description</span><textarea id="f-desc" rows="3" placeholder="Soil, water source, road access, documents"></textarea></label>
+  <div class="fld"><span>Location</span>
+   <div class="pick" data-act="pick">${mapSvg()}<span class="mpin" id="dropin" style="left:${S.pin.x}%;top:${S.pin.y}%">${ic('pin')}</span><span class="pickhint">Tap the map to place the pin on your plot</span></div>
+   <div class="coords"><span id="coords">${coords()}</span><button type="button" class="link" data-act="locate">${ic('target','xs')}Use my location</button></div></div>
+  <label class="set tg"><div><b>Show approximate location</b><span>The exact pin is shared only in chat.</span></div><input type="checkbox" id="f-approx" checked><i></i></label>
+  <p class="err" id="ferr" role="alert"></p>
+ </div>
+ <div class="abar"><button class="btn-primary" data-act="publish">Publish listing</button></div>`},
+
+outgoing(){const c=S.call.chat,l=lst(c.listing);
+ return `<div class="callscr"><div class="ctop">${ic('lock','xs')}Private in-app call · numbers stay hidden</div>
+ <div class="cmid">${av(c.name,'xl pulse')}<h2>${esc(c.name)}</h2><p>${S.call.media==='video'?'Video':'Voice'} call · Ringing…</p><p class="ctx">re: ${esc(l.title)}</p></div>
+ <div class="cbtm"><div class="cbw"><button class="cb end" data-act="cancel" aria-label="Cancel call">${ic('phone')}</button><span>Cancel</span></div></div></div>`},
+
+incoming(){const c=S.call.chat,l=lst(c.listing),v=S.call.media==='video';
+ const left=Math.max(0,30-Math.floor((Date.now()-S.call.ringStart)/1000));
+ return `<div class="callscr"><div class="ctop">LandConnect · incoming ${v?'video':'voice'} call</div>
+ <div class="cmid">${av(c.name,'xl pulse')}<h2>${esc(c.name)}</h2><p>${c.role} · ${ic('lock','xs')}number hidden</p><p class="ctx">re: ${esc(l.title)}</p><p class="cd">Missed in <b id="cd">${left}</b> s</p></div>
+ <button class="qr" data-act="quick">Can't talk? Reply with a message</button>
+ <div class="cbtm"><div class="cbw"><button class="cb end" data-act="decline" aria-label="Decline">${ic('phone')}</button><span>Decline</span></div><div class="cbw"><button class="cb ok" data-act="accept" aria-label="Accept">${ic(v?'video':'phone')}</button><span>Accept</span></div></div></div>`},
+
+incall(){const c=S.call.chat,v=S.call.media==='video',t=fmtDur(Math.floor((Date.now()-S.call.start)/1000));
+ return `<div class="callscr ${v?'vid':''}">
+ ${v?`<div class="remote" style="--h:${hue(c.name)}">${av(c.name,'xl')}<span class="rl">${esc(c.name)}'s camera</span></div><div class="self ${S.camOff?'off':''}">${S.camOff?ic('camOff'):'You'}${!S.camOff&&!S.front?'<small>rear camera</small>':''}</div>`:''}
+ <div class="ctop"><b>${esc(c.name)}</b> · <span id="timer">${t}</span></div>
+ ${v?'<div style="flex:1"></div>':`<div class="cmid">${av(c.name,'xl')}<h2>${esc(c.name)}</h2><p>Voice call · ${S.speaker?'Speaker':'Earpiece'}</p></div>`}
+ <div class="ctrls">
+  ${v?`<button class="cc ${S.front?'':'on'}" data-act="flip" aria-label="Switch camera">${ic('flip')}</button><button class="cc ${S.camOff?'on':''}" data-act="cam" aria-label="Turn camera ${S.camOff?'on':'off'}">${ic(S.camOff?'camOff':'video')}</button>`
+   :`<button class="cc ${S.speaker?'on':''}" data-act="spk" aria-label="Speaker">${ic('speaker')}</button>`}
+  <button class="cc ${S.muted?'on':''}" data-act="mute" aria-label="${S.muted?'Unmute':'Mute'}">${ic(S.muted?'micOff':'mic')}</button>
+  <button class="cb end" data-act="end" aria-label="End call">${ic('phone')}</button>
+ </div></div>`},
+
+room(){const c=S.call.chat,t=fmtDur(Math.floor((Date.now()-S.call.start)/1000));
+ return `<div class="callscr vid"><div class="ctop"><b>${esc(c.name)}</b> · <span id="timer">${t}</span></div>
+ <div class="grid">${['You','Ramesh K.','Priya Estates'].map(n=>`<div class="tile" style="--h:${hue(n)}">${n==='You'&&S.camOff?ic('camOff'):av(n==='You'?ME:n,'lg')}<span>${n}${n==='You'&&S.muted?ic('micOff','xs'):''}</span></div>`).join('')}<button class="tile add" data-act="noop" data-msg="Invite buyers who enquired on this listing">${ic('plus')}<span>Invite</span></button></div>
+ <div class="ctrls"><button class="cc ${S.camOff?'on':''}" data-act="cam" aria-label="Camera">${ic(S.camOff?'camOff':'video')}</button><button class="cc ${S.muted?'on':''}" data-act="mute" aria-label="Mute">${ic(S.muted?'micOff':'mic')}</button><button class="cb end" data-act="end" aria-label="Leave meeting">${ic('phone')}</button></div></div>`}
+};
+
+const META={
+ welcome:{t:'Sign up and pick a role',r:['R1 Auth','R1 Roles'],n:['POST /auth/register stores an argon2id hash and returns a 15-minute access JWT plus a 30-day refresh token that rotates on every use.','The role goes into the JWT. Every write route checks it server-side; the UI only hides what the API would reject anyway.','Brokers add a RERA registration number. Switch the role above and the form changes.']},
+ explore:{t:'Community feed',r:['R2 Listings','R1 Role-gated'],n:['GET /listings?type=&cursor= with cursor pagination, rendered with FlashList.','The total price shows in lakh or crore, plus a per-unit rate in the unit the seller chose (acre, guntha, cent, sq ft).','The List land button exists only for Sellers and Brokers. Switch to Buyer and it disappears.']},
+ listing:{t:'Listing detail',r:['R2 Listings','R4 Maps','R7 Privacy'],n:['The owner\'s phone number is never in the API response. Contact goes through Chat, Voice or Video.','Public coordinates are rounded to about 1 km while the seller keeps approximate location on.','Chat creates or reopens one conversation per buyer and listing: POST /listings/:id/enquire. Calling from here does the same first.']},
+ map:{t:'Map view',r:['R4 Maps'],n:['react-native-maps with price markers. The visible region becomes a bbox query on GET /listings.','Tap a price pin to preview it; tap the card to open the listing.','Marker clustering waits until a region has hundreds of plots.']},
+ chats:{t:'Chats',r:['R5 Messaging','R5 Rooms'],n:['Each row is tied to a listing, so every conversation has context, like a marketplace chat.','Deal rooms are group conversations a Seller or Broker creates for one listing.','Messages arrive over the same Socket.IO connection that carries call signalling.']},
+ chat:{t:'Conversation',r:['R5 Messaging','R6 Calling'],n:['Send a message: a reply comes back after a typing indicator.','The header buttons start a voice or video call. The server checks that both people share this conversation and neither has blocked the other.','In a deal room the button starts a group meeting in one LiveKit room.']},
+ outgoing:{t:'Outgoing call',r:['R6 Initiate'],n:['socket.emit("call:invite") creates a call row (status ringing) and returns a LiveKit token for the caller.','The callee gets "call:incoming" on every connected device, plus a high-priority push if offline.','Here the call is answered after about 2.5 s. Cancel sends "call:cancel".']},
+ incoming:{t:'Incoming call',r:['R6 Receive','R6 Accept / reject'],n:['Accept emits "call:accept" and receives a room token. Decline emits "call:reject" and the caller sees "Call declined".','No answer in 30 s and the server marks the call missed for both sides. Let the countdown run out to see it.','Quick reply declines and posts a message in the chat.']},
+ incall:{t:'In call',r:['R6 End call','R7 No numbers'],n:['Media flows through LiveKit (a WebRTC SFU). Only user IDs and display names are exchanged.','Mute, camera and flip map to setMicrophoneEnabled, setCameraEnabled and a camera restart with the other facing mode.','End emits "call:end". The duration goes to the call log and appears as a bubble in the chat.']},
+ room:{t:'Meeting room',r:['R5 Meeting rooms'],n:['Same LiveKit model with more than two people. Tokens are only minted for members of the deal room.','Rooms don\'t ring. Members see a "meeting started" banner in the chat and join when ready.','Leaving logs the meeting in the call history.']},
+ calls:{t:'Call log',r:['R6 Calling'],n:['GET /calls lists this user\'s calls: direction, media, status, duration.','Missed and declined calls show in red. Tap the icon to call back.','Calls you make or take in this prototype appear here.']},
+ profile:{t:'Profile and privacy',r:['R7 Privacy','R1 Roles'],n:['Phone visibility defaults to Nobody. "Chats I share with" reveals it only where you tap Share number.','Who can call me: calls are only allowed between people who already share a conversation.','Blocking stops messages and calls in both directions, enforced by the API.']},
+ create:{t:'Create listing',r:['R3 Listing management','R4 Geotagging'],n:['Photos use expo-image-picker, are resized on the phone, and upload straight to signed Storage URLs.','Tap the map to drop the pin. The app uses a fixed centre pin over a movable map, with reverse geocoding from expo-location.','Brokers get a private field for the land owner they represent. Publish checks the title, area and price.']}
+};
+const JUMP=[['welcome','Sign up'],['explore','Explore'],['listing','Listing'],['map','Map'],['create','Create listing'],['chats','Chats'],['chat','Chat'],['outgoing','Outgoing call'],['incoming','Incoming call'],['incall','In call'],['room','Meeting room'],['calls','Call log'],['profile','Privacy']];
+$('#jump').innerHTML=JUMP.map(([k,t])=>`<button data-act="jump" data-v="${k}">${t}</button>`).join('');
+
+const app=$('#app'),phone=$('#phone');
+function render(){
+  app.innerHTML=SCREENS[S.screen](S.params);
+  phone.classList.toggle('dark',['outgoing','incoming','incall','room'].includes(S.screen));
+  phone.classList.toggle('plain',S.screen==='welcome');
+  const m=$('#msgs');if(m)m.scrollTop=m.scrollHeight;
+  renderNotes();
+}
+function renderNotes(){
+  const m=META[S.screen];
+  $('#now').innerHTML=`<div class="lbl">On screen</div><h3>${m.t}</h3><div class="reqs">${m.r.map(x=>`<span>${x}</span>`).join('')}</div><ul>${m.n.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+  document.querySelectorAll('.seg [data-act="role"]').forEach(b=>{b.classList.toggle('on',b.dataset.v===S.role);b.setAttribute('aria-pressed',b.dataset.v===S.role)});
+  document.querySelectorAll('[data-act="jump"]').forEach(b=>b.classList.toggle('on',b.dataset.v===S.screen));
+}
+function go(screen,params={},push=true){if(push)S.history.push([S.screen,S.params]);S.screen=screen;S.params=params;render();app.querySelector('.body')?.scrollTo(0,0)}
+function back(){const h=S.history.pop()||['explore',{}];S.screen=h[0];S.params=h[1];render()}
+let tt;function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2800)}
+
+function ensureChat(lid){
+  let c=C.find(c=>c.listing===lid&&!c.room);
+  if(!c){const l=lst(lid);c={id:'c'+Date.now(),name:l.owner,role:l.ownerRole,listing:lid,time:now(),unread:0,msgs:[{sys:SYS}]};C.unshift(c)}
+  return c;
+}
+const inCall=()=>['outgoing','incoming','incall','room'].includes(S.screen);
+function startCall(chatId,media){
+  if(inCall())return toast('You are already on a call');
+  const c=chatById(chatId);
+  S.returnTo=[S.screen,S.params];
+  if(c.room){S.call={chat:c,media:'video',dir:'out',start:Date.now()};S.screen='room';S.params={};return render()}
+  S.call={chat:c,media,dir:'out'};S.screen='outgoing';S.params={};render();
+  S.callT=setTimeout(()=>{if(S.screen!=='outgoing')return;S.call.start=Date.now();S.screen='incall';render();toast(c.name+' accepted')},2600);
+}
+function simIncoming(media){
+  if(inCall())return toast('Busy: you\'re on a call, so the caller sees "On another call".');
+  const c=chatById(media==='video'?'c1':'c2');
+  S.returnTo=[S.screen,S.params];
+  S.call={chat:c,media,dir:'in',ringStart:Date.now()};S.screen='incoming';S.params={};render();
+}
+function logCall(status,dur){
+  const c=S.call.chat;
+  K.unshift({name:c.name,chat:c.id,media:S.call.media,dir:S.call.dir,status,when:'Today, '+now(),dur});
+  c.msgs.push({me:S.call.dir==='out',call:{media:S.call.media,label:status==='answered'?dur:status[0].toUpperCase()+status.slice(1)},time:now()});
+  c.time=now();
+}
+function leaveCall(){
+  clearTimeout(S.callT);
+  const [s,p]=S.returnTo||['calls',{}];
+  Object.assign(S,{call:null,muted:false,camOff:false,front:true,speaker:false,screen:s,params:p});
+  render();
+}
+function placePin(){const d=$('#dropin');if(d){d.style.left=S.pin.x+'%';d.style.top=S.pin.y+'%'}const c=$('#coords');if(c)c.textContent=coords()}
+function jump(v){
+  clearTimeout(S.callT);S.call=null;S.history=[];
+  if(v==='outgoing'){S.screen='chat';S.params={id:'c1'};return startCall('c1','video')}
+  if(v==='incoming'){S.screen='chat';S.params={id:'c1'};return simIncoming('video')}
+  if(v==='incall'){S.returnTo=['chat',{id:'c1'}];S.call={chat:chatById('c1'),media:'video',dir:'out',start:Date.now()};S.screen='incall';S.params={};return render()}
+  if(v==='room'){S.screen='chat';S.params={id:'c3'};return startCall('c3','video')}
+  S.screen=v;S.params=v==='listing'?{id:'l1'}:v==='chat'?{id:'c1'}:{};render();
+}
+
+const ACT={
+ back,
+ tab:t=>{S.history=[];go(t.dataset.v,{},false)},
+ role:t=>{S.role=t.dataset.v;render();if(S.screen!=='welcome')toast('Viewing as '+RL[S.role])},
+ signup:()=>{S.history=[];go('explore',{},false);toast('Signed in as '+RL[S.role])},
+ logout:()=>{S.history=[];go('welcome',{},false)},
+ filter:t=>{S.filter=t.dataset.v;render()},
+ mapsel:t=>{S.mapSel=t.dataset.v;render()},
+ enquire:t=>go('chat',{id:ensureChat(t.dataset.id).id}),
+ call:t=>startCall(t.dataset.chat||ensureChat(t.dataset.listing).id,t.dataset.media),
+ newroom:()=>{go('chat',{id:'c3'});toast('Deal room: the listing owner, the broker and buyers who enquired')},
+ noop:t=>toast(t.dataset.msg||'Not part of this prototype'),
+ sold:t=>{const l=lst(t.dataset.id);l.sold=!l.sold;render();toast(l.sold?'Marked as sold. Buyers see a Sold tag.':'Listing is active again')},
+ sim:t=>simIncoming(t.dataset.media),
+ accept:()=>{S.call.start=Date.now();S.screen='incall';render()},
+ decline:()=>{logCall('declined');leaveCall();toast('Declined. The caller sees "Call declined".')},
+ quick:()=>{const c=S.call.chat;logCall('declined');c.msgs.push({me:true,text:"Can't talk now. I'll call you back shortly.",time:now()});leaveCall();toast('Declined with a message')},
+ cancel:()=>{logCall('cancelled');leaveCall();toast('Call cancelled')},
+ end:()=>{const d=fmtDur(Math.floor((Date.now()-S.call.start)/1000));logCall('answered',d);leaveCall();toast('Call ended · '+d)},
+ mute:()=>{S.muted=!S.muted;render()},
+ cam:()=>{S.camOff=!S.camOff;render()},
+ flip:()=>{S.front=!S.front;render()},
+ spk:()=>{S.speaker=!S.speaker;render()},
+ priv:t=>{S.priv[t.dataset.k]=t.dataset.v;render();toast('Privacy setting saved')},
+ tog:t=>{S.priv[t.dataset.k]=t.checked;toast('Privacy setting saved')},
+ ltype:t=>{S.newType=t.dataset.v;t.parentNode.querySelectorAll('.chip').forEach(b=>b.classList.toggle('on',b===t))},
+ pick:(t,e)=>{const r=t.getBoundingClientRect();S.pin={x:Math.round((e.clientX-r.left)/r.width*100),y:Math.round((e.clientY-r.top)/r.height*100)};placePin()},
+ locate:()=>{S.pin={x:50,y:52};placePin();toast('Pin moved to your GPS location')},
+ publish:()=>{
+  const g=id=>($('#'+id)?.value||'').trim();const err=$('#ferr');
+  const title=g('f-title'),area=parseFloat(g('f-area')),unit=g('f-unit'),price=parseInt(g('f-price').replace(/[^0-9]/g,''),10);
+  if(title.length<5){err.textContent='Add a title of at least 5 characters.';return}
+  if(!(area>0)){err.textContent='Enter the area as a number, for example 2.5.';return}
+  if(!(price>0)){err.textContent='Enter the asking price in rupees, for example 11200000.';return}
+  L.unshift({id:'n'+Date.now(),title,type:S.newType,area:`${+area.toFixed(2)} ${unit}`,price:inr(price),per:`${inr(Math.round(price/area))} / ${unit}`,loc:'Pinned plot, Bengaluru Rural',owner:ME,ownerRole:RL[S.role],verified:S.role==='broker',mine:true,posted:'now',art:['#A9CFE3','#8CB35C','#7AA04D','#628A40'],x:S.pin.x,y:S.pin.y,road:'Not specified',water:'Not specified',titleDoc:'Not specified',zone:S.newType,desc:g('f-desc')||'No description yet.'});
+  S.filter='All';S.history=[];go('explore',{},false);toast('Listing published');
+ },
+ jump:t=>jump(t.dataset.v)
+};
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-go],[data-act]');if(!t)return;
+  if(t.dataset.go){go(t.dataset.go,t.dataset.id?{id:t.dataset.id}:{});return}
+  ACT[t.dataset.act]?.(t,e);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('article[data-go],.sheet'))e.target.click()});
+document.addEventListener('input',e=>{if(e.target.id==='f-price'){const n=parseInt(e.target.value.replace(/[^0-9]/g,''),10);$('#pp').textContent=n>0?inr(n):''}});
+document.addEventListener('submit',e=>{
+  e.preventDefault();if(e.target.id!=='composer')return;
+  const inp=$('#msg'),txt=inp.value.trim();if(!txt)return;
+  const c=chatById(e.target.dataset.chat);inp.value='';
+  c.msgs.push({me:true,text:txt,time:now()});c.time=now();render();$('#msg')?.focus();
+  const onIt=()=>S.screen==='chat'&&S.params.id===c.id;
+  const keep=f=>{const v=$('#msg')?.value;f();if(onIt()){render();if(v)$('#msg').value=v;$('#msg')?.focus()}};
+  setTimeout(()=>keep(()=>{c.typing=true}),700);
+  setTimeout(()=>keep(()=>{c.typing=false;c.msgs.push({from:c.room?'Ramesh K.':null,text:REPLIES[S.r++%REPLIES.length],time:now()});c.time=now();if(!onIt())c.unread++}),2300);
+});
+setInterval(()=>{
+  $('#clock').textContent=now();
+  if(!S.call)return;
+  const tm=$('#timer');if(tm&&S.call.start)tm.textContent=fmtDur(Math.floor((Date.now()-S.call.start)/1000));
+  if(S.screen==='incoming'){const left=30-Math.floor((Date.now()-S.call.ringStart)/1000);
+    if(left<=0){const n=S.call.chat.name;logCall('missed');leaveCall();toast('Missed call from '+n)}else{const cd=$('#cd');if(cd)cd.textContent=left}}
+},500);
+render();
+</script>
