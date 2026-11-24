@@ -1,14 +1,16 @@
 import {
   type AuthResponse,
+  changeRoleSchema,
   forgotPasswordSchema,
   loginSchema,
+  type RoleChangeResponse,
   refreshSchema,
   resetPasswordSchema,
   signUpSchema,
   updateMeSchema,
   verifyEmailSchema,
 } from '@landconnect/shared';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, notExists } from 'drizzle-orm';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { authenticate, hashPassword, issueRefresh, revokeRefresh, rotateRefresh, signAccess, verifyPassword } from '../auth.ts';
@@ -18,7 +20,7 @@ import { toMe, toPublicUser } from '../dto.ts';
 import { consumeCode, sendCode } from '../email-codes.ts';
 import { HttpError, notFound } from '../errors.ts';
 
-const { users, blocks, refreshTokens } = schema;
+const { users, blocks, refreshTokens, listings } = schema;
 // Brute-force guard on credential endpoints (per IP).
 const strict = { config: { rateLimit: { max: config.NODE_ENV === 'test' ? 10_000 : 10, timeWindow: '1 minute' } } };
 
@@ -129,6 +131,28 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     const [user] = await db.update(users).set(req.body).where(eq(users.id, req.user.id)).returning();
     if (!user) throw notFound();
     return toMe(user);
+  });
+
+  app.patch('/me/role', { preHandler: authenticate, schema: { body: changeRoleSchema } }, async (req) => {
+    const { role, reraId } = req.body;
+    const me = req.user.id;
+    // Going back to buyer is only allowed with no live listing, checked in the same UPDATE so it can't race a new post.
+    const noLiveListing = notExists(
+      db
+        .select({ id: listings.id })
+        .from(listings)
+        .where(and(eq(listings.ownerId, me), eq(listings.status, 'active'))),
+    );
+    const [user] = await db
+      .update(users)
+      .set({ role, reraId: role === 'broker' ? (reraId ?? null) : null })
+      .where(role === 'buyer' ? and(eq(users.id, me), noLiveListing) : eq(users.id, me))
+      .returning();
+    if (!user) {
+      if (role === 'buyer') throw new HttpError(409, 'Mark your live listings as sold or delete them before switching to buyer');
+      throw notFound();
+    }
+    return { user: toMe(user), accessToken: await signAccess(user) } satisfies RoleChangeResponse;
   });
 
   app.get('/me/blocks', { preHandler: authenticate }, async (req) => {

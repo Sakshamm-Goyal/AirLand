@@ -1,4 +1,13 @@
-import type { AuthResponse, CallInvite, ClientToServer, Conversation, Listing, Page, ServerToClient } from '@landconnect/shared';
+import type {
+  AuthResponse,
+  CallInvite,
+  ClientToServer,
+  Conversation,
+  Listing,
+  Page,
+  RoleChangeResponse,
+  ServerToClient,
+} from '@landconnect/shared';
 import type { FastifyInstance } from 'fastify';
 import { io as connect, type Socket } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -413,6 +422,36 @@ describe('listing lifecycle', () => {
     expect(feed.body.items.some((x) => x.id === l.body.id)).toBe(false);
     const mine = await api<Page<Listing>>('GET', '/listings?owner=me', seller.accessToken);
     expect(mine.body.items.find((x) => x.id === l.body.id)?.status).toBe('sold');
+  });
+});
+
+describe('role change', () => {
+  it('buyer becomes seller and can post with the new token; old buyer token still cannot', async () => {
+    const b = await user('buyer');
+    expect((await api('POST', '/listings', b.accessToken, listing)).status).toBe(403);
+    const r = await api<RoleChangeResponse>('PATCH', '/me/role', b.accessToken, { role: 'seller' });
+    expect(r.status).toBe(200);
+    expect(r.body.user.role).toBe('seller');
+    expect((await api('POST', '/listings', r.body.accessToken, listing)).status).toBe(201);
+  });
+
+  it('broker needs a RERA number', async () => {
+    const s = await user('seller');
+    const bad = await api<{ fields?: Record<string, string> }>('PATCH', '/me/role', s.accessToken, { role: 'broker' });
+    expect(bad.status).toBe(400);
+    expect(bad.body.fields?.reraId).toBeTruthy();
+    const ok = await api<RoleChangeResponse>('PATCH', '/me/role', s.accessToken, { role: 'broker', reraId: 'PRM/KA/RERA/1251' });
+    expect(ok.body.user).toMatchObject({ role: 'broker', reraId: 'PRM/KA/RERA/1251' });
+  });
+
+  it('back to buyer only once no listing is live', async () => {
+    const s = await user('seller');
+    const l = await api<Listing>('POST', '/listings', s.accessToken, listing);
+    expect((await api('PATCH', '/me/role', s.accessToken, { role: 'buyer' })).status).toBe(409);
+    await api('PATCH', `/listings/${l.body.id}`, s.accessToken, { status: 'sold' });
+    const r = await api<RoleChangeResponse>('PATCH', '/me/role', s.accessToken, { role: 'buyer' });
+    expect(r.status).toBe(200);
+    expect(r.body.user).toMatchObject({ role: 'buyer', reraId: null });
   });
 });
 

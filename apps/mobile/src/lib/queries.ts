@@ -1,6 +1,7 @@
 import type {
   AuthResponse,
   CallLogEntry,
+  ChangeRoleInput,
   Conversation,
   ForgotPasswordInput,
   LandType,
@@ -12,6 +13,7 @@ import type {
   Page,
   PublicUser,
   ResetPasswordInput,
+  RoleChangeResponse,
   SignUpInput,
 } from '@landconnect/shared';
 import { type InfiniteData, QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -87,6 +89,18 @@ export function useUpdateMe() {
     mutationFn: (b: Partial<Pick<Me, 'callPolicy' | 'showApproxLocation' | 'name'>> & { pushToken?: string | null }) =>
       api.patch<Me>('/me', b),
     onSuccess: (u) => useSession.getState().setUser(u),
+  });
+}
+
+/** Switch buyer/seller/broker. The new access token carries the new role, so permissions change at once. */
+export function useChangeRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: ChangeRoleInput) => api.patch<RoleChangeResponse>('/me/role', b),
+    onSuccess: (r) => {
+      useSession.setState({ user: r.user, accessToken: r.accessToken });
+      void qc.invalidateQueries();
+    },
   });
 }
 

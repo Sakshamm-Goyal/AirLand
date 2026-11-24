@@ -1,11 +1,13 @@
-import { formatInr, type Listing } from '@landconnect/shared';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { formatInr, type Listing, type Role } from '@landconnect/shared';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ChevronRight, Lock, LogOut, MapPinned, PhoneCall, Plus, ShieldCheck } from 'lucide-react-native';
-import type { ReactNode } from 'react';
+import { ArrowLeftRight, ChevronRight, House, Lock, LogOut, MapPinned, PhoneCall, Plus, ShieldCheck } from 'lucide-react-native';
+import { type ReactNode, useRef, useState } from 'react';
 import { Pressable, ScrollView, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Button, Divider, RoleBadge, Text } from '@/components/ui';
+import { RoleSheet } from '@/features/profile/RoleSheet';
 import { api } from '@/lib/api';
 import { queryClient, useBlocks, useMyListings, useSetBlocked, useUpdateMe } from '@/lib/queries';
 import { useSession } from '@/lib/session';
@@ -22,6 +24,12 @@ export default function Profile() {
   const mine = useMyListings();
   const blocks = useBlocks().data ?? [];
   const setBlocked = useSetBlocked();
+  const roleSheet = useRef<BottomSheetModal>(null);
+  const [preselect, setPreselect] = useState<Role>();
+  const openRoles = (r?: Role) => {
+    setPreselect(r);
+    roleSheet.current?.present();
+  };
 
   const signOut = async () => {
     const token = useSession.getState().refreshToken;
@@ -96,7 +104,37 @@ export default function Profile() {
             ) : null}
           </ScrollView>
         </View>
-      ) : null}
+      ) : (
+        <Pressable onPress={() => openRoles('seller')} style={s.promo} accessibilityRole="button" accessibilityLabel="Become a seller">
+          <View style={[s.promoIcon, { backgroundColor: c.accentSoft }]}>
+            <House size={22} color={c.accent} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="bodyMedium">Have land to sell?</Text>
+            <Text variant="small" color="muted">
+              Switch to a seller account and list it. Your chats stay.
+            </Text>
+          </View>
+          <ChevronRight size={20} color={c.muted} />
+        </Pressable>
+      )}
+
+      <View style={{ gap: 8 }}>
+        <Text variant="h1">Account</Text>
+        <Pressable onPress={() => openRoles()} style={s.row} accessibilityRole="button" accessibilityLabel="Switch role">
+          <ArrowLeftRight size={20} color={c.inkSoft} />
+          <View style={{ flex: 1 }}>
+            <Text variant="bodyMedium">Role</Text>
+            <Text variant="small" color="muted">
+              {{ buyer: 'Buyer', seller: 'Seller', broker: 'Broker' }[user.role]} · switch any time
+            </Text>
+          </View>
+          <Text variant="smallMedium" color="accent">
+            Switch
+          </Text>
+          <ChevronRight size={18} color={c.muted} />
+        </Pressable>
+      </View>
 
       <View style={{ gap: 8 }}>
         <Text variant="h1">Privacy</Text>
@@ -147,6 +185,7 @@ export default function Profile() {
       ) : null}
 
       <Button title="Sign out" kind="secondary" icon={LogOut} onPress={signOut} />
+      <RoleSheet sheet={roleSheet} preselect={preselect} />
     </ScrollView>
   );
 }
@@ -227,6 +266,18 @@ const useStyles = makeStyles(({ c, dark }) => ({
     ...shadow(dark),
   },
   list: { gap: 16, paddingTop: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 6 },
+  promo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: c.line,
+    backgroundColor: c.surface,
+  },
+  promoIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   note: {
     flexDirection: 'row',
     alignItems: 'center',

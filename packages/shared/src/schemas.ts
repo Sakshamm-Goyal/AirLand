@@ -82,6 +82,20 @@ export const updateMeSchema = z.object({
   pushToken: z.string().max(200).nullable().optional(),
 });
 
+/** Switch role later (buyer → seller, anyone → broker with RERA, back to buyer once no listing is live). */
+export const changeRoleSchema = z
+  .object({ role: z.enum(ROLES), reraId: z.string().trim().max(40).optional() })
+  .refine((v) => v.role !== 'broker' || (v.reraId?.length ?? 0) >= 4, {
+    path: ['reraId'],
+    message: 'Brokers need a RERA registration number',
+  });
+export type ChangeRoleInput = z.infer<typeof changeRoleSchema>;
+/** The role lives in the access token, so a role change hands back a fresh one. */
+export interface RoleChangeResponse {
+  user: Me;
+  accessToken: string;
+}
+
 export interface AuthResponse {
   user: Me;
   accessToken: string;
