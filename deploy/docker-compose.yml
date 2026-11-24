@@ -1,0 +1,15 @@
+# Production on one VM: API + LiveKit. TLS is done by a Caddy in front (see deploy/README.md).
+# Host networking: LiveKit needs the UDP port range without docker-proxy; the API is one instance (call state is in memory).
+services:
+  api:
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    network_mode: host
+    env_file: .env.api
+    restart: unless-stopped
+  livekit:
+    image: livekit/livekit-server:v1.9
+    network_mode: host
+    command: --config /etc/livekit.yaml
+    env_file: .env.livekit # LIVEKIT_KEYS="<key>: <secret>"
+    volumes: [./livekit.yaml:/etc/livekit.yaml:ro]
+    restart: unless-stopped

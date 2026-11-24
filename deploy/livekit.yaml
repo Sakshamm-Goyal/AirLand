@@ -1,0 +1,18 @@
+port: 7880
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 60000
+  use_external_ip: true
+  ips:
+    # Docker bridge addresses are useless to phones; don't advertise them.
+    excludes: [172.16.0.0/12]
+turn:
+  # Relays media for phones behind carrier-grade NAT (common on Indian 4G).
+  enabled: true
+  domain: rtc.213-136-67-77.sslip.io
+  udp_port: 3478
+  relay_range_start: 30000
+  relay_range_end: 40000
+logging:
+  level: info
