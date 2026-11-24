@@ -1,6 +1,6 @@
 # Production deploy (one VM)
 
-API + LiveKit run with `docker compose` (host networking) on the VM; Postgres is Neon; TLS comes from the Caddy already on the box.
+API + LiveKit run with `docker compose` (host networking) on the VM; Postgres is Neon (project `landconnect-eu`, aws-eu-central-1: keep it in the same region as the VM, a call invite makes several sequential queries and Singapore↔France cost ~4 s per ring); TLS comes from the Caddy already on the box.
 
 | | |
 |---|---|
