@@ -1,6 +1,6 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { formatInr, type Message } from '@landconnect/shared';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -61,11 +61,18 @@ export default function Chat() {
   const peer = conv ? peerOf(conv, me) : null;
   const online = usePresence((p) => (peer ? p[peer.id] : false));
 
-  // Mark read on open and whenever a new message lands while we're here.
+  const list = useRef<FlashListRef<UiMessage>>(null);
+  const atBottom = useRef(true);
+
+  // A new newest message: mark read, and follow it if I sent it or I'm already reading the bottom.
+  // (FlashList keeps the visible rows still when a row is added at the start, so it won't scroll by itself.)
   const newest = items[0]?.id;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `newest` is the trigger: re-mark read when a message arrives
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `newest` is the trigger
   useEffect(() => {
     getSocket().emit('conv:read', { conversationId: id });
+    if (newest && (items[0]?.senderId === me || atBottom.current)) {
+      requestAnimationFrame(() => list.current?.scrollToOffset({ offset: 0, animated: true }));
+    }
   }, [id, newest]);
 
   const send = async (body = text.trim(), retryOf?: UiMessage) => {
@@ -216,6 +223,7 @@ export default function Chat() {
       {/* The list shrinks with the keyboard, so the newest messages stay visible and older ones scroll. */}
       <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={-insets.bottom} style={{ flex: 1 }}>
         <FlashList
+          ref={list}
           data={items}
           inverted
           keyExtractor={(m) => m.clientId ?? m.id}
@@ -245,6 +253,11 @@ export default function Chat() {
           onEndReached={() => msgs.hasNextPage && !msgs.isFetchingNextPage && msgs.fetchNextPage()}
           contentContainerStyle={{ paddingHorizontal: gutter, paddingVertical: 12 }}
           keyboardDismissMode="interactive"
+          // Inverted: offset 0 is the newest message at the bottom.
+          onScroll={(e) => {
+            atBottom.current = e.nativeEvent.contentOffset.y < 120;
+          }}
+          scrollEventThrottle={100}
         />
 
         <View>
