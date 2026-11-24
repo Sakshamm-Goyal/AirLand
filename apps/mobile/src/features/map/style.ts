@@ -27,14 +27,16 @@ export const MAP_STYLE_LIGHT: MapStyleElement[] = [
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#C7DCE3' }] },
 ];
 
+// Slate rather than near-black: land, roads and water stay distinguishable on a dim phone screen.
 export const MAP_STYLE_DARK: MapStyleElement[] = [
   ...common,
-  { elementType: 'geometry', stylers: [{ color: '#161A18' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8D948E' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0D100F' }] },
-  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#18211C' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#173226' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#272D2A' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#333333' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0E1B22' }] },
+  { elementType: 'geometry', stylers: [{ color: '#2B302D' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#BAC2BC' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#1E2220' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#5C645F' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#303833' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#2F4A3B' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#424A45' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#525B55' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#22404F' }] },
 ];

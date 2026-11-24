@@ -174,14 +174,27 @@ export function useDeleteListing() {
   });
 }
 
-/** Optimistic save/unsave. */
+/**
+ * Optimistic save/unsave, patched into every cached copy of the listing (detail, feeds, map, my listings).
+ * Only the "Saved" feed is refetched; invalidating every listings query fired ~10 requests per heart tap.
+ */
 export function useToggleSave(listing: Listing) {
   const qc = useQueryClient();
+  const patch = (saved: boolean) => {
+    const fix = (l: Listing) => (l.id === listing.id ? { ...l, saved } : l);
+    qc.setQueryData<Listing>(qk.listing(listing.id), (l) => (l ? fix(l) : l));
+    qc.setQueriesData<InfiniteData<Page<Listing>> | Page<Listing>>({ queryKey: ['listings'] }, (d) => {
+      if (!d) return d;
+      if ('pages' in d) return { ...d, pages: d.pages.map((p) => ({ ...p, items: p.items.map(fix) })) };
+      return { ...d, items: d.items.map(fix) };
+    });
+  };
   return useMutation({
     mutationFn: (save: boolean) => (save ? api.put(`/listings/${listing.id}/save`) : api.del(`/listings/${listing.id}/save`)),
-    onMutate: (save) => qc.setQueryData<Listing>(qk.listing(listing.id), (l) => (l ? { ...l, saved: save } : l)),
-    onError: () => qc.setQueryData<Listing>(qk.listing(listing.id), (l) => (l ? { ...l, saved: listing.saved } : l)),
-    onSettled: () => qc.invalidateQueries({ queryKey: ['listings'] }),
+    onMutate: (save) => patch(save),
+    onError: () => patch(listing.saved),
+    onSettled: () =>
+      qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === 'listings' && (q.queryKey[1] as Filters | undefined)?.saved === 'true' }),
   });
 }
 
@@ -250,8 +263,10 @@ export function useSetBlocked() {
 }
 
 /**
- * Pull-to-refresh spinner that reflects only the user's pull. Binding it to `isRefetching` showed the spinner for
- * every socket-triggered background refetch and could leave it stuck on Android.
+ * Pull-to-refresh spinner that reflects only the user's pull (binding it to `isRefetching` showed it for every
+ * socket-triggered background refetch). Two Android fixes: the spinner stays up at least 600 ms, because flipping
+ * `refreshing` true→false within a frame or two (our API answers in ~100 ms) leaves the native spinner stuck;
+ * and it never waits more than 10 s on a slow network.
  */
 export function usePullToRefresh(refetch: () => Promise<unknown>) {
   const [refreshing, setRefreshing] = useState(false);
@@ -259,7 +274,10 @@ export function usePullToRefresh(refetch: () => Promise<unknown>) {
     refreshing,
     onRefresh: () => {
       setRefreshing(true);
-      void refetch().finally(() => setRefreshing(false));
+      const started = Date.now();
+      void Promise.race([refetch().catch(() => {}), new Promise((r) => setTimeout(r, 10_000))]).then(() =>
+        setTimeout(() => setRefreshing(false), Math.max(0, 600 - (Date.now() - started))),
+      );
     },
   };
 }
