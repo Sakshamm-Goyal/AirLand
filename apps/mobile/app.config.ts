@@ -48,7 +48,12 @@ const config: ExpoConfig = {
     ['@livekit/react-native-expo-plugin', { android: { audioType: 'communication' } }],
     '@config-plugins/react-native-webrtc',
     // Dev builds talk to the API over plain HTTP on the LAN.
-    ['expo-build-properties', { android: { usesCleartextTraffic: true } }],
+    // R8 is off: it stripped Room's reflectively-loaded WorkDatabase_Impl and the release APK crashed on launch.
+    // ponytail: costs APK size; turn it back on only with keep rules for Room and org.webrtc (JNI) and a device test.
+    [
+      'expo-build-properties',
+      { android: { usesCleartextTraffic: true, enableMinifyInReleaseBuilds: false, enableShrinkResourcesInReleaseBuilds: false } },
+    ],
   ],
   experiments: { typedRoutes: true, reactCompiler: true },
   extra: { eas: { projectId: '0d74b7a8-c01b-44ce-8519-27ecf4b687b6' } },
