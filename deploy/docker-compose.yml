@@ -6,7 +6,10 @@ services:
     network_mode: host
     env_file: .env.api
     restart: unless-stopped
+  # Calls use LiveKit Cloud (nearest edge for Indian users). This self-hosted server is kept as a fallback:
+  #   docker compose -p landconnect --profile selfhosted-livekit up -d livekit   (+ point LIVEKIT_* at it, open the UDP ports)
   livekit:
+    profiles: [selfhosted-livekit]
     image: livekit/livekit-server:v1.9
     network_mode: host
     command: --config /etc/livekit.yaml
