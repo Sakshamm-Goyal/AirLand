@@ -94,6 +94,26 @@ export const conversationRoutes: FastifyPluginAsyncZod = async (app) => {
     return conv;
   });
 
+  /** Leave a deal room (WhatsApp "Exit group"). The others see "<name> left"; a 1:1 chat can't be left, only blocked. */
+  app.delete('/conversations/:id/members/me', { schema: { params } }, async (req, reply) => {
+    const me = req.user.id;
+    const rooms = db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(and(eq(conversations.id, req.params.id), eq(conversations.kind, 'room')));
+    const [left] = await db
+      .delete(members)
+      .where(and(eq(members.conversationId, req.params.id), eq(members.userId, me), inArray(members.conversationId, rooms)))
+      .returning();
+    if (!left) {
+      if ((await memberIds(req.params.id)).includes(me)) throw new HttpError(400, "A 1:1 chat can't be left. Block the person instead.");
+      throw notFound('Room not found');
+    }
+    const [u] = await db.select({ name: users.name }).from(users).where(eq(users.id, me));
+    await postMessage(req.params.id, null, `${u?.name ?? 'Someone'} left`, 'system');
+    return reply.code(204).send();
+  });
+
   app.get('/conversations/:id/messages', { schema: { params, querystring: messagesQuerySchema } }, async (req) => {
     if (!(await memberIds(req.params.id)).includes(req.user.id)) throw notFound('Conversation not found');
     const rows = await db

@@ -12,6 +12,7 @@ import {
   EllipsisVertical,
   LandPlot,
   Lock,
+  LogOut,
   Phone,
   PhoneIncoming,
   PhoneMissed,
@@ -28,7 +29,7 @@ import { toast } from 'sonner-native';
 import { Avatar, Button, IconButton, RoleBadge, Text } from '@/components/ui';
 import { calls } from '@/features/calls/store';
 import { convTitle, peerOf } from '@/lib/conversation';
-import { upsertMessage, useBlocks, useConversation, useMessages, useSetBlocked } from '@/lib/queries';
+import { upsertMessage, useBlocks, useConversation, useLeaveRoom, useMessages, useSetBlocked } from '@/lib/queries';
 import { activeChat, usePresence, useTyping } from '@/lib/realtime';
 import { useSession } from '@/lib/session';
 import { emitAck, getSocket } from '@/lib/socket';
@@ -54,6 +55,8 @@ export default function Chat() {
   const membersSheet = useRef<BottomSheetModal>(null);
   const presence = usePresence((p) => p);
   const [confirmBlock, setConfirmBlock] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const leave = useLeaveRoom(id);
   const conv = useConversation(id).data;
   const msgs = useMessages(id);
   const typingUser = useTyping((t) => t[id]);
@@ -365,7 +368,8 @@ export default function Chat() {
           backgroundStyle={{ backgroundColor: c.surface }}
           handleIndicatorStyle={{ backgroundColor: c.line }}
           enableDynamicSizing
-          maxDynamicContentSize={600}
+          maxDynamicContentSize={640}
+          onDismiss={() => setConfirmLeave(false)}
         >
           <BottomSheetView style={{ paddingHorizontal: gutter, paddingTop: 4, paddingBottom: insets.bottom + 16, gap: 4 }}>
             <View style={[s.sheetHead, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
@@ -422,6 +426,34 @@ export default function Chat() {
                   </View>
                 </View>
               ))}
+            <View style={{ height: 1, backgroundColor: c.line, marginVertical: 8 }} />
+            {confirmLeave ? (
+              <View style={{ gap: 12, paddingTop: 4 }}>
+                <Text variant="bodyMedium">Leave “{conv.title}”?</Text>
+                <Text variant="small" color="muted">
+                  You won't get its messages or meeting invites any more. The others will see that you left. Someone in the room has to add
+                  you again to rejoin.
+                </Text>
+                <Button
+                  title="Leave room"
+                  kind="danger"
+                  loading={leave.isPending}
+                  onPress={() =>
+                    leave.mutate(undefined, {
+                      onSuccess: () => {
+                        membersSheet.current?.dismiss();
+                        toast(`You left ${conv.title}`);
+                        router.back();
+                      },
+                      onError: (e) => toast.error(e.message),
+                    })
+                  }
+                />
+                <Button title="Cancel" kind="secondary" onPress={() => setConfirmLeave(false)} />
+              </View>
+            ) : (
+              <SheetRow icon={LogOut} label="Leave room" danger onPress={() => setConfirmLeave(true)} />
+            )}
           </BottomSheetView>
         </BottomSheetModal>
       ) : null}

@@ -259,6 +259,7 @@ All routes are JSON. 🔒 = needs `Authorization: Bearer <access>`. Role column 
 | POST | `/auth/password/reset` | public | `{email, code, password}` → `{user, accessToken, refreshToken}`; signs out every other device |
 | GET / PATCH | `/me` | 🔒 any | Privacy settings, push token, avatar |
 | PATCH | `/me/role` | 🔒 any | Switch buyer/seller/broker (broker needs `reraId`; back to buyer only with no live listing, else 409). Returns `{ user, accessToken }` since the role is in the token |
+| DELETE | `/conversations/:id/members/me` | 🔒 member | Leave a deal room; others get a "<name> left" system message. 400 for a 1:1 chat (block instead) |
 | GET | `/listings` | public | `?type&q&minPrice&maxPrice&bbox=minLng,minLat,maxLng,maxLat&cursor` |
 | GET | `/listings/:id` | public | Coordinates rounded to 2 dp (≈1.1 km) if `approx_location` and the caller isn't owner/enquirer |
 | POST | `/listings` | 🔒 seller, broker | |

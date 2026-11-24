@@ -541,6 +541,24 @@ describe('deal rooms', () => {
     expect((theirs.body as unknown as { error: string }).error).not.toContain('Unblock');
   });
 
+  it('a member can leave a room; the rest see it, and the leaver is out', async () => {
+    const { seller, buyer } = await pair();
+    const r = await room(seller.accessToken, [buyer.user.id]);
+    const sellerSock = await sock(seller.accessToken);
+    const seen = next(sellerSock, 'message:new');
+    expect((await api('DELETE', `/conversations/${r.body.id}/members/me`, buyer.accessToken)).status).toBe(204);
+    expect((await seen).body).toBe(`${buyer.user.name} left`);
+    const inbox = await api<Conversation[]>('GET', '/conversations', buyer.accessToken);
+    expect(inbox.body.some((c) => c.id === r.body.id)).toBe(false);
+    expect((await api('GET', `/conversations/${r.body.id}/messages`, buyer.accessToken)).status).toBe(404);
+    expect((await api('DELETE', `/conversations/${r.body.id}/members/me`, buyer.accessToken)).status).toBe(404);
+  });
+
+  it('a 1:1 chat cannot be left (block instead)', async () => {
+    const { buyer, conv } = await pair();
+    expect((await api('DELETE', `/conversations/${conv.id}/members/me`, buyer.accessToken)).status).toBe(400);
+  });
+
   it('buyers cannot create rooms', async () => {
     const { buyer, seller } = await pair();
     expect((await room(buyer.accessToken, [seller.user.id])).status).toBe(403);

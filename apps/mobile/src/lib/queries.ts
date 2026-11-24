@@ -198,6 +198,19 @@ export function useToggleSave(listing: Listing) {
   });
 }
 
+/** Leave a deal room. It disappears from the inbox at once; the others see "<name> left". */
+export function useLeaveRoom(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.del(`/conversations/${id}/members/me`),
+    onSuccess: () => {
+      qc.setQueryData<Conversation[]>(qk.conversations, (list) => list?.filter((c) => c.id !== id));
+      qc.removeQueries({ queryKey: qk.conversation(id) });
+      qc.removeQueries({ queryKey: qk.messages(id) });
+    },
+  });
+}
+
 // ── Conversations & messages ─────────────────────────────────────────────
 export function useConversations() {
   return useQuery({ queryKey: qk.conversations, queryFn: () => api.get<Conversation[]>('/conversations') });
