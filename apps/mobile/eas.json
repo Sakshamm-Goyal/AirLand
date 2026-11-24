@@ -18,7 +18,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://landconnect-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://api.213-136-67-77.sslip.io"
       },
       "environment": "preview"
     },
