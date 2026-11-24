@@ -1,3 +1,4 @@
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { formatInr, type Message } from '@landconnect/shared';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
@@ -9,15 +10,18 @@ import {
   ChevronRight,
   Clock3,
   EllipsisVertical,
+  LandPlot,
+  Lock,
   Phone,
   PhoneIncoming,
   PhoneMissed,
+  ShieldBan,
   Users,
   Video,
 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 import { Avatar, Button, IconButton, RoleBadge, Text } from '@/components/ui';
@@ -32,9 +36,9 @@ import { gutter, makeStyles, radius, type, useTheme } from '@/theme';
 
 type UiMessage = Message & { pending?: boolean; failed?: boolean };
 
-// One-tap openers for the first message, by who is asking.
+// One-tap openers for the first message: what the person enquiring asks vs what the listing owner answers.
 const STARTERS = {
-  buyer: ['Is the price negotiable?', 'Can I visit this weekend?', 'Are the title documents clear?', 'Is there road access?'],
+  asker: ['Is the price negotiable?', 'Can I visit this weekend?', 'Are the title documents clear?', 'Is there road access?'],
   owner: ["Yes, it's still available.", 'When would you like to visit?', 'I can share the documents here.'],
 };
 
@@ -45,6 +49,8 @@ export default function Chat() {
   const insets = useSafeAreaInsets();
   const me = useSession((st) => st.user!.id);
   const myRole = useSession((st) => st.user!.role);
+  const sheet = useRef<BottomSheetModal>(null);
+  const [confirmBlock, setConfirmBlock] = useState(false);
   const conv = useConversation(id).data;
   const msgs = useMessages(id);
   const typingUser = useTyping((t) => t[id]);
@@ -165,26 +171,10 @@ export default function Chat() {
                   label="More options"
                   variant="plain"
                   size={36}
-                  onPress={() =>
-                    Alert.alert(`Block ${peer.name}?`, "They won't be able to message or call you. They aren't told.", [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Block',
-                        style: 'destructive',
-                        onPress: () =>
-                          setBlocked.mutate(
-                            { userId: peer.id, blocked: true },
-                            {
-                              onSuccess: () => {
-                                toast(`${peer.name} is blocked`, { description: 'Unblock any time from your profile.' });
-                                router.back();
-                              },
-                              onError: (e) => toast.error(e.message),
-                            },
-                          ),
-                      },
-                    ])
-                  }
+                  onPress={() => {
+                    setConfirmBlock(false);
+                    sheet.current?.present();
+                  }}
                 />
               </>
             )}
@@ -223,83 +213,220 @@ export default function Chat() {
         </Pressable>
       ) : null}
 
-      <FlashList
-        data={items}
-        inverted
-        keyExtractor={(m) => m.clientId ?? m.id}
-        renderItem={({ item, index }) => (
-          <View>
-            {/* Inverted list: the separator goes above the first message of each day, i.e. when the older one differs. */}
-            {!items[index + 1] || !sameDay(items[index + 1]!.createdAt, item.createdAt) ? (
-              <View style={s.day}>
-                <Text variant="micro" color="muted">
-                  {dayLabel(item.createdAt)}
-                </Text>
-              </View>
-            ) : null}
-            <Bubble
-              m={item}
-              mine={item.senderId === me}
-              grouped={
-                items[index + 1]?.senderId === item.senderId &&
-                items[index + 1]?.kind === 'text' &&
-                sameDay(items[index + 1]!.createdAt, item.createdAt)
-              }
-              onRetry={() => send(item.body, item)}
-              onCallBack={peer && !isRoom ? (kind) => calls.start(id, kind, peer, conv?.listing?.title ?? null) : undefined}
-            />
-          </View>
-        )}
-        onEndReached={() => msgs.hasNextPage && !msgs.isFetchingNextPage && msgs.fetchNextPage()}
-        contentContainerStyle={{ paddingHorizontal: gutter, paddingVertical: 12 }}
-        keyboardDismissMode="interactive"
-      />
+      {/* The list shrinks with the keyboard, so the newest messages stay visible and older ones scroll. */}
+      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={-insets.bottom} style={{ flex: 1 }}>
+        <FlashList
+          data={items}
+          inverted
+          keyExtractor={(m) => m.clientId ?? m.id}
+          renderItem={({ item, index }) => (
+            <View>
+              {/* Inverted list: the separator goes above the first message of each day, i.e. when the older one differs. */}
+              {!items[index + 1] || !sameDay(items[index + 1]!.createdAt, item.createdAt) ? (
+                <View style={s.day}>
+                  <Text variant="micro" color="muted">
+                    {dayLabel(item.createdAt)}
+                  </Text>
+                </View>
+              ) : null}
+              <Bubble
+                m={item}
+                mine={item.senderId === me}
+                grouped={
+                  items[index + 1]?.senderId === item.senderId &&
+                  items[index + 1]?.kind === 'text' &&
+                  sameDay(items[index + 1]!.createdAt, item.createdAt)
+                }
+                onRetry={() => send(item.body, item)}
+                onCallBack={peer && !isRoom ? (kind) => calls.start(id, kind, peer, conv?.listing?.title ?? null) : undefined}
+              />
+            </View>
+          )}
+          onEndReached={() => msgs.hasNextPage && !msgs.isFetchingNextPage && msgs.fetchNextPage()}
+          contentContainerStyle={{ paddingHorizontal: gutter, paddingVertical: 12 }}
+          keyboardDismissMode="interactive"
+        />
 
-      <KeyboardStickyView offset={{ opened: insets.bottom }}>
-        {!isRoom && msgs.data && !items.some((m) => m.senderId === me && m.kind === 'text') ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingHorizontal: gutter - 6, paddingBottom: 10, gap: 8 }}
-          >
-            {STARTERS[myRole === 'buyer' ? 'buyer' : 'owner'].map((t) => (
-              <Pressable
-                key={t}
-                onPress={() => send(t)}
-                style={s.starter}
-                accessibilityRole="button"
-                accessibilityLabel={t}
-                accessibilityHint="Sends this message"
-              >
-                <Text variant="smallMedium">{t}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        ) : null}
-        <View style={[s.composer, { paddingBottom: insets.bottom + 10 }]}>
-          <TextInput
-            value={text}
-            onChangeText={onType}
-            placeholder="Message"
-            placeholderTextColor={c.muted}
-            style={s.input}
-            multiline
-            maxLength={4000}
-            accessibilityLabel="Message"
-          />
-          <Pressable
-            onPress={() => send()}
-            disabled={!text.trim()}
-            style={[s.send, !text.trim() && { opacity: 0.35 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Send"
-          >
-            <ArrowUp size={22} color={c.onInk} strokeWidth={2.5} />
-          </Pressable>
+        <View>
+          {!isRoom && msgs.data && !items.some((m) => m.senderId === me && m.kind === 'text') ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingHorizontal: gutter - 6, paddingBottom: 10, gap: 8 }}
+            >
+              {STARTERS[(conv?.listing ? conv.listing.ownerId === me : myRole !== 'buyer') ? 'owner' : 'asker'].map((t) => (
+                <Pressable
+                  key={t}
+                  onPress={() => send(t)}
+                  style={s.starter}
+                  accessibilityRole="button"
+                  accessibilityLabel={t}
+                  accessibilityHint="Sends this message"
+                >
+                  <Text variant="smallMedium">{t}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
+          <View style={[s.composer, { paddingBottom: insets.bottom + 10 }]}>
+            <TextInput
+              value={text}
+              onChangeText={onType}
+              placeholder="Message"
+              placeholderTextColor={c.muted}
+              style={s.input}
+              multiline
+              maxLength={4000}
+              accessibilityLabel="Message"
+            />
+            <Pressable
+              onPress={() => send()}
+              disabled={!text.trim()}
+              style={[s.send, !text.trim() && { opacity: 0.35 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Send"
+            >
+              <ArrowUp size={22} color={c.onInk} strokeWidth={2.5} />
+            </Pressable>
+          </View>
         </View>
-      </KeyboardStickyView>
+      </KeyboardAvoidingView>
+
+      {peer && !isRoom ? (
+        <BottomSheetModal
+          ref={sheet}
+          backdropComponent={(p) => <BottomSheetBackdrop {...p} disappearsOnIndex={-1} appearsOnIndex={0} />}
+          backgroundStyle={{ backgroundColor: c.surface }}
+          handleIndicatorStyle={{ backgroundColor: c.line }}
+          onDismiss={() => setConfirmBlock(false)}
+        >
+          <BottomSheetView style={{ paddingHorizontal: gutter, paddingTop: 4, paddingBottom: insets.bottom + 16 }}>
+            {confirmBlock ? (
+              <View style={{ gap: 16 }}>
+                <View style={[s.sheetIcon, { backgroundColor: c.dangerSoft }]}>
+                  <ShieldBan size={24} color={c.danger} />
+                </View>
+                <View style={{ gap: 6 }}>
+                  <Text variant="title">Block {peer.name}?</Text>
+                  <Text variant="body" color="muted">
+                    They won't be able to message or call you, and they aren't told. You can unblock them any time from your profile.
+                  </Text>
+                </View>
+                <View style={{ gap: 10, marginTop: 4 }}>
+                  <Button
+                    title={`Block ${peer.name.split(' ')[0]}`}
+                    kind="danger"
+                    loading={setBlocked.isPending}
+                    onPress={() =>
+                      setBlocked.mutate(
+                        { userId: peer.id, blocked: true },
+                        {
+                          onSuccess: () => {
+                            sheet.current?.dismiss();
+                            toast(`${peer.name} is blocked`, { description: 'Unblock any time from your profile.' });
+                            router.back();
+                          },
+                          onError: (e) => toast.error(e.message),
+                        },
+                      )
+                    }
+                  />
+                  <Button title="Cancel" kind="secondary" onPress={() => sheet.current?.dismiss()} />
+                </View>
+              </View>
+            ) : (
+              <View>
+                <View style={s.sheetHead}>
+                  <Avatar name={peer.name} uri={peer.avatarUrl} size={48} />
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text variant="h2" numberOfLines={1}>
+                      {peer.name}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <RoleBadge role={peer.role} verified={peer.verified} />
+                      <Lock size={12} color={c.muted} />
+                      <Text variant="small" color="muted">
+                        Number hidden
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                {conv?.listing ? (
+                  <SheetRow
+                    icon={LandPlot}
+                    label="View listing"
+                    hint={conv.listing.title}
+                    onPress={() => {
+                      sheet.current?.dismiss();
+                      router.push({ pathname: '/listing/[id]', params: { id: conv.listing!.id } });
+                    }}
+                  />
+                ) : null}
+                <SheetRow
+                  icon={Phone}
+                  label="Voice call"
+                  onPress={() => {
+                    sheet.current?.dismiss();
+                    calls.start(id, 'audio', peer, conv?.listing?.title ?? null);
+                  }}
+                />
+                <SheetRow
+                  icon={Video}
+                  label="Video call"
+                  onPress={() => {
+                    sheet.current?.dismiss();
+                    calls.start(id, 'video', peer, conv?.listing?.title ?? null);
+                  }}
+                />
+                <SheetRow icon={ShieldBan} label={`Block ${peer.name.split(' ')[0]}`} danger onPress={() => setConfirmBlock(true)} />
+              </View>
+            )}
+          </BottomSheetView>
+        </BottomSheetModal>
+      ) : null}
     </View>
+  );
+}
+
+function SheetRow({
+  icon: Icon,
+  label,
+  hint,
+  danger,
+  onPress,
+}: {
+  icon: typeof Phone;
+  label: string;
+  hint?: string;
+  danger?: boolean;
+  onPress: () => void;
+}) {
+  const s = useStyles();
+  const { c } = useTheme();
+  const color = danger ? c.danger : c.ink;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [s.sheetRow, pressed && { backgroundColor: c.surfaceAlt }]}
+    >
+      <View style={[s.sheetIcon, { backgroundColor: danger ? c.dangerSoft : c.surfaceAlt }]}>
+        <Icon size={20} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text variant="bodyMedium" style={{ color }}>
+          {label}
+        </Text>
+        {hint ? (
+          <Text variant="small" color="muted" numberOfLines={1}>
+            {hint}
+          </Text>
+        ) : null}
+      </View>
+      {danger ? null : <ChevronRight size={18} color={c.muted} />}
+    </Pressable>
   );
 }
 
@@ -368,10 +495,10 @@ function Bubble({
           {m.body}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' }}>
-          <Text variant="micro" style={{ color: mine ? 'rgba(243,246,242,0.7)' : c.muted }}>
+          <Text variant="micro" style={{ color: mine ? c.bubbleOutText : c.muted, opacity: mine ? 0.6 : 1 }}>
             {clockTime(m.createdAt)}
           </Text>
-          {mine && Tick ? <Tick size={13} color="rgba(243,246,242,0.75)" /> : null}
+          {mine && Tick ? <Tick size={13} color={c.bubbleOutText} style={{ opacity: 0.6 }} /> : null}
         </View>
       </View>
       {m.failed ? (
@@ -487,5 +614,25 @@ const useStyles = makeStyles(({ c }) => ({
     ...type.body,
     color: c.ink,
   },
+  sheetHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingBottom: 14,
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderColor: c.line,
+  },
+  sheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    minHeight: 60,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    marginHorizontal: -8,
+    borderRadius: radius.md,
+  },
+  sheetIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   send: { width: 46, height: 46, borderRadius: 23, backgroundColor: c.ink, alignItems: 'center', justifyContent: 'center' },
 }));

@@ -27,7 +27,7 @@ import { Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ListingCard } from '@/components/ListingCard';
 import { Button, Chip, EmptyState, IconButton, Skeleton, Text } from '@/components/ui';
-import { type Filters, useListings } from '@/lib/queries';
+import { type Filters, useListings, usePullToRefresh } from '@/lib/queries';
 import { useSession } from '@/lib/session';
 import { gutter, makeStyles, radius, shadow, type, useTheme } from '@/theme';
 
@@ -70,6 +70,8 @@ export default function Explore() {
   }, [text]);
 
   const q = useListings(filters);
+
+  const pull = usePullToRefresh(q.refetch);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
   const canList = user.role !== 'buyer';
   const active = filters.saved ? 'saved' : (filters.type ?? 'all');
@@ -191,9 +193,7 @@ export default function Explore() {
         }
         onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && q.fetchNextPage()}
         onEndReachedThreshold={0.6}
-        refreshControl={
-          <RefreshControl refreshing={q.isRefetching && !q.isFetchingNextPage} onRefresh={() => void q.refetch()} tintColor={c.muted} />
-        }
+        refreshControl={<RefreshControl {...pull} tintColor={c.muted} colors={[c.accent]} progressBackgroundColor={c.surface} />}
         contentContainerStyle={{ paddingBottom: 100 }}
         keyboardDismissMode="on-drag"
         onScroll={(e) => setScrolled(e.nativeEvent.contentOffset.y > 4)}

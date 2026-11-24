@@ -68,7 +68,14 @@ export async function listConversations(userId: string, onlyId?: string): Promis
     db
       .select({
         c: conversations,
-        l: { id: listings.id, title: listings.title, priceInr: listings.priceInr, images: listings.images, locality: listings.locality },
+        l: {
+          id: listings.id,
+          title: listings.title,
+          priceInr: listings.priceInr,
+          images: listings.images,
+          locality: listings.locality,
+          ownerId: listings.ownerId,
+        },
       })
       .from(conversations)
       .leftJoin(listings, eq(listings.id, conversations.listingId))
@@ -105,7 +112,14 @@ export async function listConversations(userId: string, onlyId?: string): Promis
     kind: c.kind,
     title: c.title,
     listing: l?.id
-      ? ({ id: l.id, title: l.title, priceInr: l.priceInr, image: l.images[0] ?? null, locality: l.locality } satisfies ListingStub)
+      ? ({
+          id: l.id,
+          title: l.title,
+          priceInr: l.priceInr,
+          image: l.images[0] ?? null,
+          locality: l.locality,
+          ownerId: l.ownerId,
+        } satisfies ListingStub)
       : null,
     members: memberRows.filter((m) => m.cid === c.id).map((m) => toPublicUser(m.u)),
     lastMessage: last.get(c.id) ?? null,

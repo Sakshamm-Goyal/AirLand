@@ -6,7 +6,7 @@ import { RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Chip, EmptyState, IconButton, Skeleton, Text } from '@/components/ui';
 import { calls } from '@/features/calls/store';
-import { useCallLog } from '@/lib/queries';
+import { useCallLog, usePullToRefresh } from '@/lib/queries';
 import { chatTime, dayLabel } from '@/lib/time';
 import { gutter, makeStyles, radius, useTheme } from '@/theme';
 
@@ -35,6 +35,7 @@ export default function Calls() {
   const s = useStyles();
   const insets = useSafeAreaInsets();
   const q = useCallLog();
+  const pull = usePullToRefresh(q.refetch);
   const [missedOnly, setMissedOnly] = useState(false);
   const entries = (q.data ?? []).filter((e) => !missedOnly || isMissed(e));
   const rows: Row[] = [];
@@ -102,7 +103,7 @@ export default function Calls() {
           )
         }
         contentContainerStyle={{ paddingBottom: 24 }}
-        refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.muted} />}
+        refreshControl={<RefreshControl {...pull} tintColor={c.muted} colors={[c.accent]} progressBackgroundColor={c.surface} />}
       />
     </View>
   );

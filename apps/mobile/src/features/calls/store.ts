@@ -4,6 +4,7 @@ import { Vibration } from 'react-native';
 import { toast } from 'sonner-native';
 import { create } from 'zustand';
 import { emitAck, getSocket } from '@/lib/socket';
+import { resetAudioMode, stopTone } from './tones';
 
 export type CallPhase = 'idle' | 'outgoing' | 'incoming' | 'connecting' | 'active';
 
@@ -17,6 +18,8 @@ interface CallState {
   expiresAt: number | null;
   join: JoinInfo | null;
   answeredAt: number | null;
+  /** Loudspeaker vs earpiece. Chosen while ringing, carried into the call. Video starts on speaker. */
+  speaker: boolean;
 }
 
 const idle: CallState = {
@@ -29,6 +32,7 @@ const idle: CallState = {
   expiresAt: null,
   join: null,
   answeredAt: null,
+  speaker: false,
 };
 
 export const useCall = create<CallState>(() => idle);
@@ -44,6 +48,8 @@ const REASON_TEXT: Record<CallEndReason, string | null> = {
 
 function reset() {
   Vibration.cancel();
+  stopTone();
+  if (useCall.getState().phase !== 'idle') resetAudioMode();
   useCall.setState(idle);
 }
 
@@ -54,7 +60,7 @@ function reset() {
 export const calls = {
   async start(conversationId: string, kind: CallKind, peer: PublicUser, listingTitle: string | null) {
     if (useCall.getState().phase !== 'idle') return toast('You are already on a call');
-    useCall.setState({ ...idle, phase: 'outgoing', conversationId, kind, peer, listingTitle });
+    useCall.setState({ ...idle, phase: 'outgoing', conversationId, kind, peer, listingTitle, speaker: kind === 'video' });
     try {
       const { callId, expiresAt } = await emitAck<{ callId: string; expiresAt: number }>('call:invite', { conversationId, kind });
       // A busy/closed event can arrive before this ack; only adopt the id if we're still dialing.
@@ -69,6 +75,7 @@ export const calls = {
     const { callId } = useCall.getState();
     if (!callId) return;
     Vibration.cancel();
+    stopTone();
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     useCall.setState({ phase: 'connecting' });
     try {
@@ -94,6 +101,10 @@ export const calls = {
     reset();
   },
 
+  toggleSpeaker() {
+    useCall.setState((s) => ({ speaker: !s.speaker }));
+  },
+
   // ── server events ──
   onIncoming(invite: CallInvite) {
     const s = useCall.getState();
@@ -107,11 +118,13 @@ export const calls = {
       peer: invite.from,
       listingTitle: invite.listingTitle,
       expiresAt: invite.expiresAt,
+      speaker: invite.kind === 'video',
     });
     Vibration.vibrate([0, 800, 1200], true);
   },
   onAccepted(callId: string, join: JoinInfo) {
     if (useCall.getState().callId !== callId) return;
+    stopTone();
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     useCall.setState({ phase: 'active', join, answeredAt: Date.now() });
   },

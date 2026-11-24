@@ -8,7 +8,7 @@ import { Pressable, RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Button, Chip, EmptyState, Skeleton, Text } from '@/components/ui';
 import { convTitle, peerOf } from '@/lib/conversation';
-import { useConversations } from '@/lib/queries';
+import { useConversations, usePullToRefresh } from '@/lib/queries';
 import { usePresence, useTyping } from '@/lib/realtime';
 import { useSession } from '@/lib/session';
 import { chatTime } from '@/lib/time';
@@ -18,6 +18,7 @@ export default function Chats() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const q = useConversations();
+  const pull = usePullToRefresh(q.refetch);
   const canRoom = useSession((st) => st.user?.role !== 'buyer');
   const [unreadOnly, setUnreadOnly] = useState(false);
   const data = (q.data ?? []).filter((x) => !unreadOnly || x.unread > 0);
@@ -60,7 +61,7 @@ export default function Chats() {
             />
           )
         }
-        refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.muted} />}
+        refreshControl={<RefreshControl {...pull} tintColor={c.muted} colors={[c.accent]} progressBackgroundColor={c.surface} />}
       />
     </View>
   );

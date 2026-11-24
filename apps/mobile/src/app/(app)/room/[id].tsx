@@ -20,7 +20,7 @@ export default function Room() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const conv = useConversation(id).data;
   const [join, setJoin] = useState<JoinInfo | null>(null);
-  const audioReady = useAudioSession('video');
+  const audioReady = useAudioSession('video', true);
 
   useEffect(() => {
     emitAck<JoinInfo>('room:join', { conversationId: id })

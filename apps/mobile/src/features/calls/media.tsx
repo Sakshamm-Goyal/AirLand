@@ -38,12 +38,12 @@ export const ROOM_OPTIONS: RoomOptions = {
  * Configure + start the native audio session BEFORE connecting (LiveKit requirement).
  * Voice calls default to the earpiece, video calls to the speaker; Bluetooth/headset always win.
  */
-export function useAudioSession(kind: CallKind) {
+export function useAudioSession(kind: CallKind, speaker: boolean) {
   const [ready, setReady] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: route is chosen once at connect; later changes go through setSpeaker
   useEffect(() => {
     let cancelled = false;
     let cleanupIOS: (() => void) | undefined;
-    const speaker = kind === 'video';
     (async () => {
       await AudioSession.configureAudio({
         android: {

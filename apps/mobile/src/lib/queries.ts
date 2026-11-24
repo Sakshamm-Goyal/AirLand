@@ -15,6 +15,7 @@ import type {
   SignUpInput,
 } from '@landconnect/shared';
 import { type InfiniteData, QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { api } from './api';
 import { useSession } from './session';
 
@@ -232,4 +233,19 @@ export function useSetBlocked() {
       blocked ? api.post(`/users/${userId}/block`) : api.del(`/users/${userId}/block`),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.blocks }),
   });
+}
+
+/**
+ * Pull-to-refresh spinner that reflects only the user's pull. Binding it to `isRefetching` showed the spinner for
+ * every socket-triggered background refetch and could leave it stuck on Android.
+ */
+export function usePullToRefresh(refetch: () => Promise<unknown>) {
+  const [refreshing, setRefreshing] = useState(false);
+  return {
+    refreshing,
+    onRefresh: () => {
+      setRefreshing(true);
+      void refetch().finally(() => setRefreshing(false));
+    },
+  };
 }

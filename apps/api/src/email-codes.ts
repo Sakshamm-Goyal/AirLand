@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import { config } from './config.ts';
 import { db, schema } from './db/client.ts';
 import { HttpError } from './errors.ts';
+import { codeEmail } from './mail-template.ts';
 
 const { emailCodes } = schema;
 type Purpose = (typeof schema.codePurposeEnum.enumValues)[number];
@@ -17,6 +18,7 @@ export interface Mail {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 }
 /** Tests read codes from here instead of a mailbox. */
 export const outbox: Mail[] = [];
@@ -41,9 +43,17 @@ async function sendMail(m: Mail) {
 const digest = (userId: string, purpose: Purpose, code: string) =>
   createHmac('sha256', config.JWT_SECRET).update(`${purpose}:${userId}:${code}`).digest('hex');
 
-const COPY: Record<Purpose, (code: string) => { subject: string; line: string }> = {
-  verify_email: (code) => ({ subject: `${code} is your LandConnect code`, line: `Your code to verify this email is ${code}.` }),
-  reset_password: (code) => ({ subject: `${code} resets your LandConnect password`, line: `Your password reset code is ${code}.` }),
+const COPY: Record<Purpose, (code: string) => { subject: string; heading: string; intro: string }> = {
+  verify_email: (code) => ({
+    subject: `${code} is your LandConnect code`,
+    heading: 'Verify your email',
+    intro: 'enter this code in the LandConnect app to confirm this email is yours.',
+  }),
+  reset_password: (code) => ({
+    subject: `${code} resets your LandConnect password`,
+    heading: 'Reset your password',
+    intro: 'enter this code in the LandConnect app to choose a new password.',
+  }),
 };
 
 /** Create (or replace) the user's code for this purpose and email it. At most one per 30 s. */
@@ -61,12 +71,8 @@ export async function sendCode(user: { id: string; email: string; name: string }
     })
     .returning({ id: emailCodes.id });
   if (!row) throw new HttpError(429, `Wait ${COOLDOWN_S} seconds before asking for another code`);
-  const { subject, line } = COPY[purpose](code);
-  await sendMail({
-    to: user.email,
-    subject,
-    text: `Hi ${user.name},\n\n${line} It expires in ${TTL_MIN} minutes.\n\nIf you didn't ask for this, ignore this email. Nobody from LandConnect will ever ask you for this code.\n`,
-  });
+  const { subject, heading, intro } = COPY[purpose](code);
+  await sendMail({ to: user.email, subject, ...codeEmail({ name: user.name, email: user.email, code, heading, intro, ttlMin: TTL_MIN }) });
 }
 
 /** Check a code and use it up. Counts the attempt first, in SQL, so parallel guesses can't exceed the limit. */

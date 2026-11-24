@@ -35,6 +35,7 @@ import { Avatar, RoleBadge, Text } from '@/components/ui';
 import { radius } from '@/theme';
 import { flipCamera, ROOM_OPTIONS, setSpeaker, Tile, useAudioSession } from './media';
 import { calls, useCall } from './store';
+import { playTone, stopTone } from './tones';
 
 const QUICK_REPLIES = ["Can't talk now. I'll call you back.", 'In a meeting, please message me.', 'Call me in 10 minutes.'];
 
@@ -111,9 +112,16 @@ function PeerHeader({ peer, listingTitle, status }: { peer: PublicUser; listingT
 }
 
 function Ringing() {
-  const { phase, peer, kind, listingTitle, expiresAt, callId } = useCall();
+  const { phase, peer, kind, listingTitle, expiresAt, callId, speaker } = useCall();
   const insets = useSafeAreaInsets();
   const now = useNow();
+  // Callee hears a ringtone; caller hears ringback once the server confirms the other phone is ringing.
+  useEffect(() => {
+    if (phase === 'incoming') void playTone('ringtone');
+    else if (phase === 'outgoing' && callId) void playTone('ringback', speaker);
+    else stopTone();
+    return stopTone;
+  }, [phase, callId, speaker]);
   const left = expiresAt ? Math.max(0, Math.ceil((expiresAt - now) / 1000)) : null;
   const [replies, setReplies] = useState(false);
   if (!peer) return null;
@@ -163,7 +171,19 @@ function Ringing() {
           </View>
         </View>
       ) : (
-        <View style={{ alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 56 }}>
+          <View style={{ alignItems: 'center', gap: 10 }}>
+            <Control
+              label={speaker ? 'Speaker on' : 'Speaker off'}
+              icon={speaker ? Volume2 : VolumeX}
+              active={speaker}
+              onPress={calls.toggleSpeaker}
+              size={72}
+            />
+            <Text variant="smallMedium" style={{ color: '#E5ECE8' }}>
+              Speaker
+            </Text>
+          </View>
           <RoundAction label={phase === 'connecting' ? 'End' : 'Cancel'} color="#E0413A" onPress={calls.hangUp} icon={PhoneOff} />
         </View>
       )}
@@ -191,8 +211,8 @@ function RoundAction({ label, color, onPress, icon: Icon }: { label: string; col
 
 // ── Active call (LiveKit) ────────────────────────────────────────────────
 function ActiveCall() {
-  const { join, kind } = useCall();
-  const audioReady = useAudioSession(kind);
+  const { join, kind, speaker } = useCall();
+  const audioReady = useAudioSession(kind, speaker);
   if (!join || !audioReady) return <Ringing />;
   return (
     <LiveKitRoom
@@ -211,7 +231,7 @@ function ActiveCall() {
 }
 
 function CallStage() {
-  const { kind, peer, answeredAt } = useCall();
+  const { kind, peer, answeredAt, speaker } = useCall();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const connection = useConnectionState();
@@ -220,7 +240,6 @@ function CallStage() {
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], { onlySubscribed: false });
   const local = tracks.find((t) => t.participant.isLocal);
   const remote = tracks.find((t) => !t.participant.isLocal);
-  const [speaker, setSpeakerOn] = useState(kind === 'video');
   const [back, setBack] = useState(false);
   const now = useNow();
   const elapsed = answeredAt ? Math.floor((now - answeredAt) / 1000) : 0;
@@ -300,7 +319,7 @@ function CallStage() {
             label={speaker ? 'Speaker on' : 'Speaker off'}
             icon={speaker ? Volume2 : VolumeX}
             active={speaker}
-            onPress={() => setSpeaker(!speaker).then(() => setSpeakerOn(!speaker))}
+            onPress={() => setSpeaker(!speaker).then(calls.toggleSpeaker)}
           />
         )}
         {video ? (
@@ -343,12 +362,14 @@ function Control({
   onPress,
   active,
   danger,
+  size = 62,
 }: {
   label: string;
   icon: typeof Mic;
   onPress: () => unknown;
   active?: boolean;
   danger?: boolean;
+  size?: number;
 }) {
   return (
     <Pressable
@@ -357,10 +378,11 @@ function Control({
       onPress={() => void onPress()}
       style={({ pressed }) => [
         styles.control,
+        { width: size, height: size, borderRadius: size / 2 },
         { backgroundColor: danger ? '#E0413A' : active ? '#fff' : 'rgba(255,255,255,0.16)', transform: [{ scale: pressed ? 0.93 : 1 }] },
       ]}
     >
-      <Icon size={24} color={active && !danger ? '#0B1310' : '#fff'} />
+      <Icon size={size > 62 ? 28 : 24} color={active && !danger ? '#0B1310' : '#fff'} />
     </Pressable>
   );
 }

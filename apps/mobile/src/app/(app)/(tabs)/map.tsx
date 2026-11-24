@@ -73,6 +73,17 @@ export default function MapTab() {
   const q = useMapListings(bbox);
   const shown = (q.data?.items ?? []).filter((l) => !type || l.landType === type);
 
+  // Android snapshots custom markers into bitmaps. Snapshotting before the text has laid out gives blank pins,
+  // so track view changes for a moment after the markers (or the selection) change, then freeze them for smooth panning.
+  const markerKey = `${shown.map((l) => l.id).join()}|${selectedId}|${type}`;
+  const [tracking, setTracking] = useState(true);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: markerKey is the trigger
+  useEffect(() => {
+    setTracking(true);
+    const t = setTimeout(() => setTracking(false), 700);
+    return () => clearTimeout(t);
+  }, [markerKey]);
+
   // Frame the results once, on first load.
   const framed = useRef(false);
   useEffect(() => {
@@ -126,7 +137,7 @@ export default function MapTab() {
                 coordinate={{ latitude: lat, longitude: lng }}
                 anchor={{ x: 0.5, y: 0.5 }}
                 zIndex={5}
-                tracksViewChanges={false}
+                tracksViewChanges={tracking}
                 onPress={(e) => {
                   e.stopPropagation();
                   map.current?.animateToRegion(fit(group), 500);
@@ -153,7 +164,7 @@ export default function MapTab() {
                 e.stopPropagation();
                 select(l);
               }}
-              tracksViewChanges={false}
+              tracksViewChanges={tracking}
               accessibilityLabel={`${l.title}, ${formatInr(l.priceInr)}`}
             >
               <View style={{ alignItems: 'center' }}>

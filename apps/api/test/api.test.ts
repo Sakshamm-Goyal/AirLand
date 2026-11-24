@@ -207,6 +207,8 @@ async function pair() {
   expect(conv.status).toBe(201);
   const again = await api<Conversation>('POST', '/conversations', buyer.accessToken, { listingId: l.body.id });
   expect(again.body.id).toBe(conv.body.id);
+  // The chat tells the listing owner from the person enquiring by this, not by role (sellers enquire too).
+  expect(conv.body.listing?.ownerId).toBe(seller.user.id);
   return { seller, buyer, conv: conv.body, s: await sock(seller.accessToken), b: await sock(buyer.accessToken) };
 }
 

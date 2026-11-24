@@ -168,6 +168,8 @@ export interface ListingStub {
   priceInr: number;
   image: string | null;
   locality: string;
+  /** Lets the chat tell the owner from the person enquiring (a seller can enquire too). Not personal data. */
+  ownerId: string;
 }
 
 export interface Conversation {
