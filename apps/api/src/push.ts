@@ -8,7 +8,15 @@ export async function sendPush(to: string | null, title: string, body: string, d
     await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ to, title, body, data, priority: 'high', channelId: data.type === 'call' ? 'calls' : 'default', ttl: 30 }),
+      body: JSON.stringify({
+        to,
+        title,
+        body,
+        data,
+        priority: 'high',
+        channelId: data.type === 'call' ? 'calls' : 'messages',
+        ttl: data.type === 'call' ? 30 : 86_400,
+      }),
       signal: AbortSignal.timeout(3000),
     });
   } catch {

@@ -76,6 +76,7 @@ export default function SignUp() {
         render={({ field }) => (
           <Field
             label="Full name"
+            maxLength={60}
             placeholder="As on your ID"
             value={field.value}
             onChangeText={field.onChange}
@@ -91,6 +92,7 @@ export default function SignUp() {
         render={({ field }) => (
           <Field
             label="Email"
+            maxLength={254}
             placeholder="you@example.com"
             value={field.value}
             onChangeText={field.onChange}
@@ -107,6 +109,7 @@ export default function SignUp() {
         render={({ field }) => (
           <Field
             label="Phone (optional)"
+            maxLength={14}
             value={field.value ?? ''}
             onChangeText={field.onChange}
             error={err.phone?.message}
@@ -123,6 +126,7 @@ export default function SignUp() {
           render={({ field }) => (
             <Field
               label="RERA registration number"
+              maxLength={40}
               value={field.value ?? ''}
               onChangeText={field.onChange}
               error={err.reraId?.message}
@@ -138,6 +142,7 @@ export default function SignUp() {
         render={({ field }) => (
           <Field
             label="Password"
+            maxLength={128}
             placeholder="At least 8 characters"
             value={field.value}
             onChangeText={field.onChange}

@@ -1,4 +1,8 @@
+import type { Conversation, Message } from '@landconnect/shared';
+import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { useEffect } from 'react';
+import { toast } from 'sonner-native';
 import { create } from 'zustand';
 import { calls } from '@/features/calls/store';
 import { qk, queryClient, upsertMessage } from './queries';
@@ -9,6 +13,29 @@ import { closeSocket, getSocket } from './socket';
 export const useTyping = create<Record<string, string | undefined>>(() => ({}));
 export const usePresence = create<Record<string, boolean>>(() => ({}));
 const typingTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+/** The chat on screen right now (set by the chat screen while focused), so we don't banner what you're reading. */
+export const activeChat: { id: string | null } = { id: null };
+
+/** WhatsApp-style in-app banner for a message that lands while you're elsewhere in the app. Tap opens the chat. */
+function bannerFor(m: Message) {
+  const me = useSession.getState().user?.id;
+  if (m.kind === 'system' || !m.senderId || m.senderId === me || activeChat.id === m.conversationId) return;
+  if (m.kind === 'call') return; // the call UI and the call log already cover calls
+  const conv = queryClient.getQueryData<Conversation[]>(qk.conversations)?.find((c) => c.id === m.conversationId);
+  const sender = conv?.members.find((u) => u.id === m.senderId)?.name ?? 'New message';
+  const title = conv?.kind === 'room' ? `${sender} · ${conv.title}` : sender;
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  toast(title, {
+    id: `msg-${m.conversationId}`, // a burst from one chat updates one banner instead of stacking
+    description: m.body.length > 90 ? `${m.body.slice(0, 90)}…` : m.body,
+    duration: 4000,
+    onPress: () => {
+      toast.dismiss(`msg-${m.conversationId}`);
+      router.push({ pathname: '/chat/[id]', params: { id: m.conversationId } });
+    },
+  });
+}
 
 /**
  * Mount once at the root while signed in. Bridges socket events into the query cache and call store,
@@ -21,6 +48,7 @@ export function useRealtime() {
     const s = getSocket();
     s.on('message:new', (m) => {
       upsertMessage(m);
+      bannerFor(m);
       void queryClient.invalidateQueries({ queryKey: qk.conversations });
       if (m.kind === 'call') void queryClient.invalidateQueries({ queryKey: qk.calls });
       useTyping.setState({ [m.conversationId]: undefined });

@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { Server } from 'socket.io';
 import { db, schema } from './db/client.ts';
 import { toMessage, toPublicUser } from './dto.ts';
+import { sendPush } from './push.ts';
 
 const { conversations, conversationMembers: members, messages, users, listings, blocks } = schema;
 
@@ -51,8 +52,33 @@ export async function postMessage(
       .where(and(eq(members.conversationId, conversationId), eq(members.userId, senderId)));
   }
   const msg = toMessage(row!, clientId);
-  notify(await memberIds(conversationId), 'message:new', msg);
+  const ids = await memberIds(conversationId);
+  notify(ids, 'message:new', msg);
+  if (senderId && kind === 'text')
+    void pushToOffline(
+      ids.filter((id) => id !== senderId),
+      conversationId,
+      senderId,
+      body,
+    );
   return msg;
+}
+
+/** Members with no live socket get a push (needs FCM/APNs set up for Expo push; a no-op until tokens exist). */
+async function pushToOffline(ids: string[], conversationId: string, senderId: string, body: string) {
+  try {
+    const offline = [];
+    for (const id of ids) if (!bus.io || !(await bus.io.in(`user:${id}`).fetchSockets()).length) offline.push(id);
+    if (!offline.length) return;
+    const rows = await db
+      .select({ id: users.id, name: users.name, pushToken: users.pushToken })
+      .from(users)
+      .where(inArray(users.id, [...offline, senderId]));
+    const from = rows.find((r) => r.id === senderId)?.name ?? 'LandConnect';
+    for (const r of rows) if (r.id !== senderId) void sendPush(r.pushToken, from, body.slice(0, 120), { type: 'message', conversationId });
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 /** Inbox for one user, in 5 set-based queries regardless of conversation count. */

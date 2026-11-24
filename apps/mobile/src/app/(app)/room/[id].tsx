@@ -1,5 +1,12 @@
 import type { JoinInfo } from '@landconnect/shared';
-import { LiveKitRoom, useConnectionState, useLocalParticipant, useTracks } from '@livekit/react-native';
+import {
+  LiveKitRoom,
+  type TrackReferenceOrPlaceholder,
+  useConnectionState,
+  useIsSpeaking,
+  useLocalParticipant,
+  useTracks,
+} from '@livekit/react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -13,7 +20,8 @@ import { Text } from '@/components/ui';
 import { flipCamera, ROOM_OPTIONS, Tile, useAudioSession } from '@/features/calls/media';
 import { useConversation } from '@/lib/queries';
 import { emitAck } from '@/lib/socket';
-import { gutter } from '@/theme';
+import { radius } from '@/theme';
+import { callService } from '../../../../modules/call-service';
 
 /** Group video meeting for a deal room (site-visit planning, negotiation with broker + buyers). */
 export default function Room() {
@@ -59,45 +67,88 @@ export default function Room() {
   );
 }
 
+/**
+ * WhatsApp-style grid that always fills the screen: 1 = full, 2 = top/bottom halves, 3 = one wide on top + two below,
+ * 4 = 2×2, 5–8 = two columns (an odd last tile spans the width). Tap a tile to see just that person; tap again for all.
+ */
+function layout(n: number, W: number, H: number, gap: number) {
+  if (n <= 1) return [{ w: W, h: H }];
+  if (n === 2) return [0, 1].map(() => ({ w: W, h: (H - gap) / 2 }));
+  if (n === 3) {
+    const h = (H - gap) / 2;
+    return [{ w: W, h }, ...[0, 1].map(() => ({ w: (W - gap) / 2, h }))];
+  }
+  const rows = Math.ceil(n / 2);
+  const h = (H - gap * (rows - 1)) / rows;
+  return Array.from({ length: n }, (_, i) => ({ w: n % 2 === 1 && i === n - 1 ? W : (W - gap) / 2, h }));
+}
+
+const GAP = 6;
+
 function Stage({ title }: { title: string }) {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const state = useConnectionState();
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled } = useLocalParticipant();
-  const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], { onlySubscribed: false });
+  const all = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], { onlySubscribed: false });
+  // Others first, you last (bottom-right), like WhatsApp.
+  const tracks = [...all.filter((t) => !t.participant.isLocal), ...all.filter((t) => t.participant.isLocal)];
   const [back, setBack] = useState(false);
-  const cols = tracks.length <= 1 ? 1 : 2;
-  const tileW = (width - gutter * 2 - (cols - 1) * 10) / cols;
-  const tileH = tracks.length <= 2 ? tileW * (cols === 1 ? 1.3 : 1.5) : tileW * 1.25;
+  const [focus, setFocus] = useState<string | null>(null);
+  const focused = tracks.find((t) => t.participant.identity === focus);
+  const shown = focused ? [focused] : tracks;
+
+  // Same as 1:1 calls: keep the meeting alive if the app is minimised.
+  const connected = state === ConnectionState.Connected;
+  useEffect(() => {
+    if (connected) callService.start(`Meeting · ${title}`, 'Tap to return to the meeting', true);
+  }, [connected, title]);
+  useEffect(() => callService.stop, []);
+
+  const top = insets.top + 64;
+  const bottom = insets.bottom + 100;
+  const W = width - GAP * 2;
+  const H = height - top - bottom;
+  const sizes = layout(shown.length, W, H, GAP);
 
   return (
-    <View style={{ flex: 1, paddingTop: insets.top + 10 }}>
-      <View style={{ paddingHorizontal: gutter, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+    <View style={{ flex: 1 }}>
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <Users size={20} color="#fff" />
         <View style={{ flex: 1 }}>
-          <Text variant="h1" style={{ color: '#fff' }} numberOfLines={1}>
+          <Text variant="h2" style={{ color: '#fff' }} numberOfLines={1}>
             {title}
           </Text>
           <Text variant="small" style={{ color: '#A9B8B0' }}>
-            {state === ConnectionState.Reconnecting ? 'Reconnecting…' : `${tracks.length} in meeting`}
+            {state === ConnectionState.Reconnecting
+              ? 'Reconnecting…'
+              : focused
+                ? `Showing ${focused.participant.isLocal ? 'you' : focused.participant.name || 'them'} · tap to see everyone`
+                : `${tracks.length} in meeting`}
           </Text>
         </View>
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: gutter }}>
-        {tracks.map((t) => (
-          <Tile
-            key={`${t.participant.identity}`}
-            trackRef={t}
+
+      <View style={{ position: 'absolute', top, left: GAP, right: GAP, height: H, flexDirection: 'row', flexWrap: 'wrap', gap: GAP }}>
+        {shown.map((t, i) => (
+          <GroupTile
+            key={t.participant.identity}
+            t={t}
+            w={sizes[i]!.w}
+            h={sizes[i]!.h}
             mirror={t.participant.isLocal && !back}
-            style={{ width: tileW, height: tileH }}
+            onPress={() => tracks.length > 1 && setFocus(focus ? null : t.participant.identity)}
           />
         ))}
       </View>
       {tracks.length === 1 ? (
-        <Text variant="body" style={{ color: '#A9B8B0', textAlign: 'center', marginTop: 16 }}>
-          Waiting for others to join…
-        </Text>
+        <View pointerEvents="none" style={[styles.waiting, { top: top + H / 2 - 20 }]}>
+          <Text variant="bodyMedium" style={{ color: '#fff' }}>
+            Waiting for others to join…
+          </Text>
+        </View>
       ) : null}
+
       <View style={[styles.controls, { paddingBottom: insets.bottom + 20 }]}>
         <Btn label="Flip camera" icon={RefreshCcw} onPress={() => flipCamera(localParticipant, !back).then(() => setBack(!back))} />
         <Btn
@@ -115,6 +166,33 @@ function Stage({ title }: { title: string }) {
         <Btn label="Leave meeting" icon={PhoneOff} danger onPress={() => router.back()} />
       </View>
     </View>
+  );
+}
+
+/** One participant; a green ring while they talk. */
+function GroupTile({
+  t,
+  w,
+  h,
+  mirror,
+  onPress,
+}: {
+  t: TrackReferenceOrPlaceholder;
+  w: number;
+  h: number;
+  mirror: boolean;
+  onPress: () => void;
+}) {
+  const speaking = useIsSpeaking(t.participant);
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${t.participant.isLocal ? 'You' : t.participant.name || 'Guest'}${speaking ? ', speaking' : ''}`}
+      style={[styles.tile, { width: w, height: h, borderColor: speaking ? '#43A97E' : 'transparent' }]}
+    >
+      <Tile trackRef={t} mirror={mirror} style={{ flex: 1, borderRadius: radius.lg - 2 }} />
+    </Pressable>
   );
 }
 
@@ -147,6 +225,16 @@ function Btn({
 }
 
 const styles = StyleSheet.create({
+  header: { position: 'absolute', left: 0, right: 0, top: 0, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tile: { borderRadius: radius.lg, borderWidth: 2, overflow: 'hidden' },
+  waiting: {
+    position: 'absolute',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 99,
+  },
   controls: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'center', gap: 18 },
   btn: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
 });

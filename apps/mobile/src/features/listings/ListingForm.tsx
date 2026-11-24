@@ -105,15 +105,29 @@ export function ListingForm({ initial }: { initial?: Listing }) {
     );
   }, [photos, setValue, formState.isSubmitted]);
 
+  const upload = (local: string) => {
+    setPhotos((p) => p.map((x) => (x.local === local ? { ...x, state: 'uploading' } : x)));
+    uploadPhoto(local)
+      .then((url) => setPhotos((p) => p.map((x) => (x.local === local ? { ...x, url, state: 'done' } : x))))
+      .catch((e: Error) => {
+        // Say why, once per batch; the tile itself offers a retry.
+        console.warn('photo upload failed', e);
+        toast.error("A photo didn't upload", { id: 'photo-upload', description: `${e.message} Tap the photo to try again.` });
+        setPhotos((p) => p.map((x) => (x.local === local ? { ...x, state: 'failed' } : x)));
+      });
+  };
+
   const addPhotos = async () => {
-    const uris = await pickPhotos(10 - photos.length);
+    let uris: string[];
+    try {
+      uris = await pickPhotos(10 - photos.length);
+    } catch (e) {
+      console.warn('photo picker failed', e);
+      return toast.error("Couldn't open your photos", { description: (e as Error).message });
+    }
     setPhotos((p) => [...p, ...uris.map((local) => ({ local, state: 'uploading' as const }))]);
     // Upload in parallel; each tile updates as it finishes.
-    for (const local of uris) {
-      uploadPhoto(local)
-        .then((url) => setPhotos((p) => p.map((x) => (x.local === local ? { ...x, url, state: 'done' } : x))))
-        .catch(() => setPhotos((p) => p.map((x) => (x.local === local ? { ...x, state: 'failed' } : x))));
-    }
+    for (const local of uris) upload(local);
   };
 
   const reverseGeocode = async (lat: number, lng: number) => {
@@ -193,10 +207,22 @@ export function ListingForm({ initial }: { initial?: Listing }) {
           {photos.map((p) => (
             <View key={p.local} style={s.photo}>
               <Image source={p.local} style={StyleSheet.absoluteFill} contentFit="cover" />
-              {p.state !== 'done' ? (
+              {p.state === 'uploading' ? (
                 <View style={s.photoState}>
-                  {p.state === 'uploading' ? <ActivityIndicator color="#fff" /> : <AlertCircle color="#fff" />}
+                  <ActivityIndicator color="#fff" />
                 </View>
+              ) : p.state === 'failed' ? (
+                <Pressable
+                  style={s.photoState}
+                  onPress={() => upload(p.local)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Upload failed. Tap to retry"
+                >
+                  <AlertCircle color="#fff" />
+                  <Text variant="micro" style={{ color: '#fff' }}>
+                    Tap to retry
+                  </Text>
+                </Pressable>
               ) : null}
               <IconButton
                 icon={X}
@@ -221,6 +247,7 @@ export function ListingForm({ initial }: { initial?: Listing }) {
             value={field.value}
             onChangeText={field.onChange}
             error={err.title?.message}
+            hint={`${field.value?.length ?? 0}/120 · short and specific works best`}
             maxLength={120}
           />
         )}
@@ -250,11 +277,15 @@ export function ListingForm({ initial }: { initial?: Listing }) {
               placeholder="2.5"
               keyboardType="decimal-pad"
               value={areaText}
+              // Up to 9,999,999.99 of any unit: covers a cent of land to a whole estate.
               onChangeText={(v) => {
-                const clean = v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                const [whole = '', ...rest] = v.replace(/[^0-9.]/g, '').split('.');
+                const clean = rest.length ? `${whole.slice(0, 7)}.${rest.join('').slice(0, 2)}` : whole.slice(0, 7);
                 setAreaText(clean);
                 field.onChange(num(clean));
               }}
+              maxLength={10}
+              error={err.area?.message}
             />
           )}
         />
@@ -280,7 +311,8 @@ export function ListingForm({ initial }: { initial?: Listing }) {
             placeholder="1,12,00,000"
             keyboardType="number-pad"
             value={field.value ? field.value.toLocaleString('en-IN') : ''}
-            onChangeText={(v) => field.onChange(num(v))}
+            // 12 digits = up to ₹1 lakh crore, the schema's ceiling.
+            onChangeText={(v) => field.onChange(num(v.replace(/\D/g, '').slice(0, 12)))}
             error={err.priceInr?.message}
             hint={price ? `${formatInr(price)}${area ? ` · ${formatPerUnit(price, area, unit)}` : ''}` : 'Total price for the whole plot'}
           />
@@ -332,21 +364,27 @@ export function ListingForm({ initial }: { initial?: Listing }) {
         <Controller
           control={control}
           name="locality"
-          render={({ field }) => <Field label="Village / locality" value={field.value} onChangeText={field.onChange} />}
+          render={({ field }) => (
+            <Field label="Village / locality" value={field.value} onChangeText={field.onChange} maxLength={120} autoCapitalize="words" />
+          )}
         />
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1 }}>
             <Controller
               control={control}
               name="district"
-              render={({ field }) => <Field label="District" value={field.value ?? ''} onChangeText={field.onChange} />}
+              render={({ field }) => (
+                <Field label="District" value={field.value ?? ''} onChangeText={field.onChange} maxLength={80} autoCapitalize="words" />
+              )}
             />
           </View>
           <View style={{ flex: 1 }}>
             <Controller
               control={control}
               name="state"
-              render={({ field }) => <Field label="State" value={field.value ?? ''} onChangeText={field.onChange} />}
+              render={({ field }) => (
+                <Field label="State" value={field.value ?? ''} onChangeText={field.onChange} maxLength={60} autoCapitalize="words" />
+              )}
             />
           </View>
         </View>
@@ -377,7 +415,10 @@ export function ListingForm({ initial }: { initial?: Listing }) {
               placeholder="30"
               keyboardType="number-pad"
               value={field.value?.toString() ?? ''}
-              onChangeText={(v) => field.onChange(num(v) ?? null)}
+              onChangeText={(v) => field.onChange(num(v.replace(/\D/g, '').slice(0, 3)) ?? null)}
+              maxLength={3}
+              error={err.roadAccessFt ? 'Up to 500 ft' : undefined}
+              hint="Width of the road touching the plot"
             />
           )}
         />
@@ -450,6 +491,7 @@ export function ListingForm({ initial }: { initial?: Listing }) {
             multiline
             style={{ minHeight: 110, textAlignVertical: 'top' }}
             maxLength={4000}
+            hint={`${(field.value ?? '').length}/4000`}
           />
         )}
       />

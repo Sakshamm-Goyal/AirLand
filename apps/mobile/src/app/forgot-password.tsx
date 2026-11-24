@@ -58,6 +58,7 @@ export default function ForgotPassword() {
           render={({ field }) => (
             <Field
               label="Email"
+              maxLength={254}
               placeholder="you@example.com"
               value={field.value}
               onChangeText={field.onChange}
@@ -95,6 +96,7 @@ export default function ForgotPassword() {
         render={({ field }) => (
           <Field
             label="New password"
+            maxLength={128}
             placeholder="At least 8 characters"
             value={field.value}
             onChangeText={field.onChange}

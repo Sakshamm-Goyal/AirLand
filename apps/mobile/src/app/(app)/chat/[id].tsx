@@ -2,7 +2,7 @@ import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/
 import { formatInr, type Message } from '@landconnect/shared';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   ArrowUp,
   Check,
@@ -20,7 +20,7 @@ import {
   Users,
   Video,
 } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,7 +29,7 @@ import { Avatar, Button, IconButton, RoleBadge, Text } from '@/components/ui';
 import { calls } from '@/features/calls/store';
 import { convTitle, peerOf } from '@/lib/conversation';
 import { upsertMessage, useBlocks, useConversation, useMessages, useSetBlocked } from '@/lib/queries';
-import { usePresence, useTyping } from '@/lib/realtime';
+import { activeChat, usePresence, useTyping } from '@/lib/realtime';
 import { useSession } from '@/lib/session';
 import { emitAck, getSocket } from '@/lib/socket';
 import { clockTime, dayLabel, sameDay } from '@/lib/time';
@@ -51,6 +51,8 @@ export default function Chat() {
   const me = useSession((st) => st.user!.id);
   const myRole = useSession((st) => st.user!.role);
   const sheet = useRef<BottomSheetModal>(null);
+  const membersSheet = useRef<BottomSheetModal>(null);
+  const presence = usePresence((p) => p);
   const [confirmBlock, setConfirmBlock] = useState(false);
   const conv = useConversation(id).data;
   const msgs = useMessages(id);
@@ -63,6 +65,15 @@ export default function Chat() {
   const peer = conv ? peerOf(conv, me) : null;
   const online = usePresence((p) => (peer ? p[peer.id] : false));
 
+  // No in-app banner for the chat you're looking at.
+  useFocusEffect(
+    useCallback(() => {
+      activeChat.id = id;
+      return () => {
+        if (activeChat.id === id) activeChat.id = null;
+      };
+    }, [id]),
+  );
   const list = useRef<FlashListRef<UiMessage>>(null);
   const atBottom = useRef(true);
 
@@ -150,13 +161,19 @@ export default function Chat() {
                 {online ? <View style={s.onlineDot} accessibilityLabel="Online" /> : null}
               </View>
             )}
-            <View style={{ flex: 1 }}>
+            <Pressable
+              style={{ flex: 1 }}
+              disabled={!isRoom}
+              onPress={() => membersSheet.current?.present()}
+              accessibilityRole={isRoom ? 'button' : undefined}
+              accessibilityLabel={isRoom ? `${convTitle(conv, me)}, ${conv.members.length} members. Show members` : undefined}
+            >
               <Text variant="h2" numberOfLines={1}>
                 {convTitle(conv, me)}
               </Text>
               {isRoom ? (
                 <Text variant="small" color="muted">
-                  {conv.members.length} members
+                  {conv.members.length} members · tap for info
                 </Text>
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -166,7 +183,7 @@ export default function Chat() {
                   </Text>
                 </View>
               )}
-            </View>
+            </Pressable>
             {isRoom ? (
               <Button
                 title="Join"
@@ -340,6 +357,74 @@ export default function Chat() {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {conv && isRoom ? (
+        <BottomSheetModal
+          ref={membersSheet}
+          backdropComponent={(p) => <BottomSheetBackdrop {...p} disappearsOnIndex={-1} appearsOnIndex={0} />}
+          backgroundStyle={{ backgroundColor: c.surface }}
+          handleIndicatorStyle={{ backgroundColor: c.line }}
+          enableDynamicSizing
+          maxDynamicContentSize={600}
+        >
+          <BottomSheetView style={{ paddingHorizontal: gutter, paddingTop: 4, paddingBottom: insets.bottom + 16, gap: 4 }}>
+            <View style={[s.sheetHead, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+              <Text variant="title">{conv.title}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Lock size={12} color={c.muted} />
+                <Text variant="small" color="muted">
+                  {conv.members.length} members · everyone's number stays hidden
+                </Text>
+              </View>
+            </View>
+            {conv.listing ? (
+              <SheetRow
+                icon={LandPlot}
+                label="About this plot"
+                hint={conv.listing.title}
+                onPress={() => {
+                  membersSheet.current?.dismiss();
+                  router.push({ pathname: '/listing/[id]', params: { id: conv.listing!.id } });
+                }}
+              />
+            ) : null}
+            <SheetRow
+              icon={Video}
+              label="Join the meeting"
+              onPress={() => {
+                membersSheet.current?.dismiss();
+                router.push({ pathname: '/room/[id]', params: { id } });
+              }}
+            />
+            <Text variant="label" color="muted" style={{ marginTop: 10, marginBottom: 4 }}>
+              Members
+            </Text>
+            {[...conv.members]
+              .sort((a, b) => (a.id === me ? -1 : b.id === me ? 1 : a.name.localeCompare(b.name)))
+              .map((u) => (
+                <View key={u.id} style={s.memberRow} accessibilityLabel={`${u.id === me ? 'You' : u.name}, ${u.role}`}>
+                  <View>
+                    <Avatar name={u.name} uri={u.avatarUrl} size={44} />
+                    {u.id !== me && presence[u.id] ? <View style={s.onlineDot} /> : null}
+                  </View>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text variant="bodyMedium" numberOfLines={1}>
+                      {u.id === me ? `${u.name} (you)` : u.name}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <RoleBadge role={u.role} verified={u.verified} />
+                      {u.id !== me && presence[u.id] ? (
+                        <Text variant="small" color="brand">
+                          online
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                </View>
+              ))}
+          </BottomSheetView>
+        </BottomSheetModal>
+      ) : null}
 
       {peer && !isRoom ? (
         <BottomSheetModal
@@ -664,6 +749,7 @@ const useStyles = makeStyles(({ c }) => ({
     color: c.ink,
   },
   blockedBar: { gap: 10, paddingHorizontal: gutter, paddingTop: 14, borderTopWidth: 1, borderColor: c.line, backgroundColor: c.bg },
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 6 },
   sheetHead: {
     flexDirection: 'row',
     alignItems: 'center',

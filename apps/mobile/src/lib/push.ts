@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { api } from './api';
@@ -26,6 +27,10 @@ export function usePushRegistration() {
     (async () => {
       try {
         if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('messages', {
+            name: 'Messages',
+            importance: Notifications.AndroidImportance.HIGH,
+          });
           await Notifications.setNotificationChannelAsync('calls', {
             name: 'Calls',
             importance: Notifications.AndroidImportance.MAX,
@@ -42,5 +47,17 @@ export function usePushRegistration() {
         // Push is an enhancement; calls still ring while the app is open.
       }
     })();
+  }, [status]);
+
+  // Tapping a message notification opens that chat, also when the tap cold-starts the app. Native only.
+  useEffect(() => {
+    if (status !== 'signedIn' || Platform.OS === 'web') return;
+    const open = (r: Notifications.NotificationResponse | null) => {
+      const data = r?.notification.request.content.data as { type?: string; conversationId?: string } | undefined;
+      if (data?.type === 'message' && data.conversationId) router.push({ pathname: '/chat/[id]', params: { id: data.conversationId } });
+    };
+    open(Notifications.getLastNotificationResponse());
+    const sub = Notifications.addNotificationResponseReceivedListener(open);
+    return () => sub.remove();
   }, [status]);
 }

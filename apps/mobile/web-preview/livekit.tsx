@@ -53,9 +53,15 @@ export function useLocalParticipant() {
 
 export const useRemoteParticipants = () => [remote];
 export const useConnectionState = () => 'connected';
-export const useTracks = () => [
-  { participant: participant(true, 'You'), source: 'camera' },
-  { participant: remote, source: 'camera' },
-];
+const NAMES = ['Asha Sharma', 'Priya Brokers', 'Ramesh Gowda', 'Kiran Rao', 'Meera Iyer', 'Vikram Shah', 'Anil Kumar'];
+/** `?people=N` on the URL previews the meeting grid with N tiles (default 2). */
+export const useTracks = () => {
+  const n = Math.max(1, Math.min(8, Number(new URLSearchParams(globalThis.location?.search ?? '').get('people')) || 2));
+  return [
+    { participant: participant(true, 'You'), source: 'camera' },
+    ...NAMES.slice(0, n - 1).map((name, i) => ({ participant: participant(false, name, { identity: `peer${i}` }), source: 'camera' })),
+  ];
+};
+export const useIsSpeaking = (p: { identity?: string }) => p.identity === 'peer0';
 export const isTrackReference = () => false;
 export const VideoTrack = () => <View />;

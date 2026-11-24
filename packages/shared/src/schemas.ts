@@ -16,13 +16,31 @@ export type CallKind = (typeof CALL_KINDS)[number];
 export type CallStatus = (typeof CALL_STATUSES)[number];
 export type CallPolicy = (typeof CALL_POLICIES)[number];
 
+// ── Text rules ───────────────────────────────────────────────────────────
+/** Emoji are fine in chat, descriptions and room names; not in names, titles or places (search, map, documents). */
+const EMOJI = /\p{Extended_Pictographic}/u;
+const noEmoji = (s: string) => !EMOJI.test(s);
+/** A person's name in any script (Hindi, Kannada, Tamil…): letters and marks, plus spaces . ' - */
+const personName = z
+  .string()
+  .trim()
+  .min(2, 'Enter your name')
+  .max(60)
+  .regex(/^[\p{L}\p{M}][\p{L}\p{M} .'-]*$/u, 'Use letters only (no numbers or emoji)');
+const reraId = z
+  .string()
+  .trim()
+  .max(40)
+  .regex(/^[A-Za-z0-9/.\- ]*$/, 'Use letters, numbers, / and - only');
+const place = (max: number) => z.string().trim().max(max).refine(noEmoji, 'No emoji here');
+
 // ── Auth ─────────────────────────────────────────────────────────────────
 const email = z.email().trim().toLowerCase().max(254);
 const password = z.string().min(8, 'At least 8 characters').max(128);
 
 export const signUpSchema = z
   .object({
-    name: z.string().trim().min(2, 'Enter your name').max(60),
+    name: personName,
     email,
     password,
     role: z.enum(ROLES),
@@ -31,7 +49,7 @@ export const signUpSchema = z
       .trim()
       .regex(/^\+?[0-9]{10,14}$/, 'Enter a valid phone number')
       .optional(),
-    reraId: z.string().trim().max(40).optional(),
+    reraId: reraId.optional(),
   })
   .refine((v) => v.role !== 'broker' || (v.reraId?.length ?? 0) >= 4, {
     path: ['reraId'],
@@ -76,7 +94,7 @@ export interface Me extends PublicUser {
 }
 
 export const updateMeSchema = z.object({
-  name: z.string().trim().min(2).max(60).optional(),
+  name: personName.optional(),
   callPolicy: z.enum(CALL_POLICIES).optional(),
   showApproxLocation: z.boolean().optional(),
   pushToken: z.string().max(200).nullable().optional(),
@@ -84,7 +102,7 @@ export const updateMeSchema = z.object({
 
 /** Switch role later (buyer → seller, anyone → broker with RERA, back to buyer once no listing is live). */
 export const changeRoleSchema = z
-  .object({ role: z.enum(ROLES), reraId: z.string().trim().max(40).optional() })
+  .object({ role: z.enum(ROLES), reraId: reraId.optional() })
   .refine((v) => v.role !== 'broker' || (v.reraId?.length ?? 0) >= 4, {
     path: ['reraId'],
     message: 'Brokers need a RERA registration number',
@@ -104,7 +122,7 @@ export interface AuthResponse {
 
 // ── Listings ─────────────────────────────────────────────────────────────
 export const listingInputSchema = z.object({
-  title: z.string().trim().min(8, 'Give it a clear title').max(120),
+  title: z.string().trim().min(8, 'Give it a clear title').max(120).refine(noEmoji, 'No emoji in the title'),
   description: z.string().trim().max(4000).default(''),
   landType: z.enum(LAND_TYPES),
   area: z.number().positive('Area must be more than 0').max(1e9),
@@ -112,9 +130,9 @@ export const listingInputSchema = z.object({
   priceInr: z.number().int().positive('Enter a price').max(1e12),
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
-  locality: z.string().trim().min(2, 'Add the village or locality').max(120),
-  district: z.string().trim().max(80).default(''),
-  state: z.string().trim().max(60).default(''),
+  locality: place(120).pipe(z.string().min(2, 'Add the village or locality')),
+  district: place(80).default(''),
+  state: place(60).default(''),
   approxLocation: z.boolean().default(true),
   roadAccessFt: z.number().int().min(0).max(500).nullable().default(null),
   waterSource: z.enum(WATER_SOURCES).nullable().default(null),
@@ -241,3 +259,19 @@ export interface JoinInfo {
   token: string;
   roomName: string;
 }
+
+// ── Socket payloads ──────────────────────────────────────────────────────
+/** Every client→server socket event is validated against these on the server (hard limits live here). */
+const id = z.uuid();
+const callId = z.string().min(1).max(64);
+export const socketSchemas = {
+  'message:send': z.object({ conversationId: id, body: z.string().trim().min(1).max(4000), clientId: z.string().max(64) }),
+  typing: z.object({ conversationId: id }),
+  'conv:read': z.object({ conversationId: id }),
+  'room:join': z.object({ conversationId: id }),
+  'call:invite': z.object({ conversationId: id, kind: z.enum(CALL_KINDS) }),
+  'call:accept': z.object({ callId }),
+  'call:reject': z.object({ callId, message: z.string().max(500).optional() }),
+  'call:cancel': z.object({ callId }),
+  'call:end': z.object({ callId }),
+};

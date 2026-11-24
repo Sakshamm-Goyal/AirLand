@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.ts';
 import { sql } from '../src/db/client.ts';
 import { outbox } from '../src/email-codes.ts';
+import { sniff } from '../src/routes/uploads.ts';
 
 type Client = Socket<ServerToClient, ClientToServer>;
 let app: FastifyInstance;
@@ -43,9 +44,10 @@ async function api<T>(method: string, path: string, token?: string, body?: unkno
 }
 
 let n = 0;
+const letters = (i: number): string => (i > 0 ? letters(Math.floor((i - 1) / 26)) + String.fromCharCode(97 + ((i - 1) % 26)) : '');
 async function user(role: 'buyer' | 'seller' | 'broker', extra: object = {}) {
   const r = await api<AuthResponse>('POST', '/auth/signup', undefined, {
-    name: `${role} ${++n}`,
+    name: `${role} ${letters(++n)}`, // names are letters only
     email: `${role}${n}@t.test`,
     password: 'password123',
     role,
@@ -395,6 +397,24 @@ describe('uploads', () => {
       ).statusCode,
     ).toBe(415);
     expect((await app.inject({ method: 'POST', url: '/uploads', headers: m.headers, payload: m.payload })).statusCode).toBe(401);
+
+    // A script dressed up as a JPEG is refused: the bytes decide, not the Content-Type.
+    const fake = multipart('evil.jpg', 'image/jpeg', Buffer.from('<script>alert(1)</script>'));
+    const r = await app.inject({
+      method: 'POST',
+      url: '/uploads',
+      headers: { ...fake.headers, authorization: `Bearer ${seller.accessToken}` },
+      payload: fake.payload,
+    });
+    expect(r.statusCode).toBe(415);
+  });
+
+  it('sniffs real image signatures', () => {
+    expect(sniff(jpeg)).toBe('image/jpeg');
+    expect(sniff(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]))).toBe('image/png');
+    expect(sniff(Buffer.from('RIFF\0\0\0\0WEBPVP8 '))).toBe('image/webp');
+    expect(sniff(Buffer.from('\0\0\0\x18ftypheic'))).toBe('image/heic');
+    expect(sniff(Buffer.from('GIF89a'))).toBeNull();
   });
 });
 
@@ -422,6 +442,108 @@ describe('listing lifecycle', () => {
     expect(feed.body.items.some((x) => x.id === l.body.id)).toBe(false);
     const mine = await api<Page<Listing>>('GET', '/listings?owner=me', seller.accessToken);
     expect(mine.body.items.find((x) => x.id === l.body.id)?.status).toBe('sold');
+  });
+});
+
+describe('text rules on the server', () => {
+  it('rejects emoji in names and listing titles with a field error', async () => {
+    const r = await api<{ fields?: Record<string, string> }>('POST', '/auth/signup', undefined, {
+      name: 'Asha 😀',
+      email: 'emoji@t.test',
+      password: 'password123',
+      role: 'buyer',
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.fields?.name).toBeTruthy();
+    const seller = await user('seller');
+    const l = await api<{ fields?: Record<string, string> }>('POST', '/listings', seller.accessToken, {
+      ...listing,
+      title: 'Farm 🌾 by the lake',
+    });
+    expect(l.status).toBe(400);
+    expect(l.body.fields?.title).toBeTruthy();
+  });
+});
+
+describe('socket hard limits', () => {
+  it('malformed or oversized socket payloads get an error ack and never crash the server', async () => {
+    const { buyer, conv, b } = await pair();
+    const ack = (event: string, payload: unknown) =>
+      new Promise<{ ok: boolean; error?: string }>((r) => (b as unknown as { emit: (...a: unknown[]) => void }).emit(event, payload, r));
+    const bad: [string, unknown][] = [
+      ['message:send', { conversationId: conv.id, body: 12345, clientId: 'x' }],
+      ['message:send', { conversationId: 'not-a-uuid', body: 'hi', clientId: 'x' }],
+      ['message:send', { conversationId: conv.id, body: 'x'.repeat(4001), clientId: 'x' }],
+      ['message:send', null],
+      ['room:join', { conversationId: 'nope' }],
+      ['call:invite', { conversationId: conv.id, kind: 'hologram' }],
+      ['call:accept', { callId: { $ne: 1 } }],
+    ];
+    for (const [event, payload] of bad) {
+      const r = await ack(event, payload);
+      expect(r.ok, `${event} ${JSON.stringify(payload)?.slice(0, 60)}`).toBe(false);
+    }
+    // Fire-and-forget events with junk must not take the process down either.
+    for (const e of ['typing', 'conv:read', 'call:reject', 'call:cancel', 'call:end'])
+      (b as unknown as { emit: (...a: unknown[]) => void }).emit(e, { conversationId: 'zzz', callId: 42 });
+    await new Promise((r) => setTimeout(r, 300));
+    // Still alive and still working.
+    const ok = await ack('message:send', { conversationId: conv.id, body: 'still here', clientId: 'ok1' });
+    expect(ok.ok).toBe(true);
+    expect((await api('GET', '/me', buyer.accessToken)).status).toBe(200);
+  });
+
+  it('a flood of messages from one socket is throttled', async () => {
+    const { conv, b } = await pair();
+    const results = await Promise.all(
+      Array.from(
+        { length: 40 },
+        (_, i) =>
+          new Promise<{ ok: boolean }>((r) =>
+            b.emit('message:send', { conversationId: conv.id, body: `spam ${i}`, clientId: `s${i}` }, r as never),
+          ),
+      ),
+    );
+    expect(results.filter((r) => !r.ok).length).toBeGreaterThan(0);
+  });
+});
+
+describe('deal rooms', () => {
+  const room = (token: string, memberIds: string[]) =>
+    api<Conversation>('POST', '/conversations/rooms', token, { title: 'Site visit Saturday', memberIds });
+
+  it('a seller groups people they already chat with', async () => {
+    const { seller, buyer } = await pair();
+    const r = await room(seller.accessToken, [buyer.user.id]);
+    expect(r.status).toBe(201);
+    expect(r.body.kind).toBe('room');
+    expect(r.body.members.map((m) => m.id).sort()).toEqual([seller.user.id, buyer.user.id].sort());
+  });
+
+  it('strangers cannot be added by id', async () => {
+    const { seller } = await pair();
+    const stranger = await user('buyer');
+    const r = await room(seller.accessToken, [stranger.user.id]);
+    expect(r.status).toBe(400);
+  });
+
+  it('no blocked people, either direction, without saying who blocked whom', async () => {
+    const { seller, buyer } = await pair();
+    await api('POST', `/users/${buyer.user.id}/block`, seller.accessToken);
+    const mine = await room(seller.accessToken, [buyer.user.id]);
+    expect(mine.status).toBe(403);
+    expect((mine.body as unknown as { error: string }).error).toContain('Unblock');
+
+    const p2 = await pair();
+    await api('POST', `/users/${p2.seller.user.id}/block`, p2.buyer.accessToken); // the buyer blocked the seller
+    const theirs = await room(p2.seller.accessToken, [p2.buyer.user.id]);
+    expect(theirs.status).toBe(403);
+    expect((theirs.body as unknown as { error: string }).error).not.toContain('Unblock');
+  });
+
+  it('buyers cannot create rooms', async () => {
+    const { buyer, seller } = await pair();
+    expect((await room(buyer.accessToken, [seller.user.id])).status).toBe(403);
   });
 });
 

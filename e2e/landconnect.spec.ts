@@ -8,8 +8,9 @@ import { type Browser, expect, type Page, test } from '@playwright/test';
  */
 
 const run = Date.now().toString(36);
-const seller = { name: `Ravi Seller ${run}`, email: `seller.${run}@e2e.test` };
-const buyer = { name: `Meera Buyer ${run}`, email: `buyer.${run}@e2e.test` };
+// Names are letters only, so the run id goes in the email, not the name.
+const seller = { name: 'Ravi Seller', email: `seller.${run}@e2e.test` };
+const buyer = { name: 'Meera Buyer', email: `buyer.${run}@e2e.test` };
 const title = `E2E mango farm ${run}`;
 const PHOTO = path.join(__dirname, '../apps/mobile/assets/images/icon.png');
 

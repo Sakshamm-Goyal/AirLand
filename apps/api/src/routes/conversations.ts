@@ -8,7 +8,7 @@ import { db, schema } from '../db/client.ts';
 import { toMessage, toPublicUser } from '../dto.ts';
 import { forbidden, HttpError, notFound } from '../errors.ts';
 
-const { conversations, conversationMembers: members, messages, listings, users, calls } = schema;
+const { conversations, conversationMembers: members, messages, listings, users, calls, blocks } = schema;
 const params = z.object({ id: z.uuid() });
 
 export const conversationRoutes: FastifyPluginAsyncZod = async (app) => {
@@ -57,9 +57,32 @@ export const conversationRoutes: FastifyPluginAsyncZod = async (app) => {
 
   /** Deal room: a group thread + group video meeting for a site-visit or negotiation. */
   app.post('/conversations/rooms', { preHandler: can('seller', 'broker'), schema: { body: createRoomSchema } }, async (req, reply) => {
-    const ids = [...new Set([req.user.id, ...req.body.memberIds])];
-    const found = await db.select({ id: users.id }).from(users).where(inArray(users.id, ids));
-    if (found.length !== ids.length) throw new HttpError(400, 'Some members were not found');
+    const me = req.user.id;
+    const others = [...new Set(req.body.memberIds)].filter((id) => id !== me);
+    if (!others.length) throw new HttpError(400, 'Add at least one person');
+    // Like WhatsApp: only people you already have a 1:1 chat with (no adding strangers by id) ...
+    const myConvs = db.select({ id: members.conversationId }).from(members).where(eq(members.userId, me));
+    const contacts = await db
+      .selectDistinct({ id: members.userId, name: users.name })
+      .from(members)
+      .innerJoin(conversations, eq(conversations.id, members.conversationId))
+      .innerJoin(users, eq(users.id, members.userId))
+      .where(and(eq(conversations.kind, 'direct'), inArray(members.conversationId, myConvs), inArray(members.userId, others)));
+    if (contacts.length !== others.length) throw new HttpError(400, 'You can only add people you are already chatting with');
+    // ... and nobody with a block either way. Who blocked whom stays private, as everywhere else.
+    const blockRows = await db
+      .select({ blocker: blocks.blockerId, blocked: blocks.blockedId })
+      .from(blocks)
+      .where(
+        or(
+          and(eq(blocks.blockerId, me), inArray(blocks.blockedId, others)),
+          and(inArray(blocks.blockerId, others), eq(blocks.blockedId, me)),
+        ),
+      );
+    const iBlocked = blockRows.find((b) => b.blocker === me);
+    if (iBlocked) throw new HttpError(403, `Unblock ${contacts.find((c) => c.id === iBlocked.blocked)?.name ?? 'them'} to add them`);
+    if (blockRows.length) throw new HttpError(403, "Couldn't add some people to this room");
+    const ids = [me, ...others];
     const [room] = await db
       .insert(conversations)
       .values({ kind: 'room', title: req.body.title, listingId: req.body.listingId, createdBy: req.user.id })
