@@ -31,7 +31,7 @@ export default function SignUp() {
   return (
     <FormScreen
       title="Join LandConnect"
-      subtitle="Pick how you'll use the app. You can't change this later."
+      subtitle="Pick how you'll use the app. You can switch any time in Profile."
       footer={<Button title="Create account" onPress={submit} loading={signUp.isPending} />}
     >
       <Controller

@@ -16,6 +16,7 @@ import {
   PhoneIncoming,
   PhoneMissed,
   ShieldBan,
+  ShieldCheck,
   Users,
   Video,
 } from 'lucide-react-native';
@@ -27,7 +28,7 @@ import { toast } from 'sonner-native';
 import { Avatar, Button, IconButton, RoleBadge, Text } from '@/components/ui';
 import { calls } from '@/features/calls/store';
 import { convTitle, peerOf } from '@/lib/conversation';
-import { upsertMessage, useConversation, useMessages, useSetBlocked } from '@/lib/queries';
+import { upsertMessage, useBlocks, useConversation, useMessages, useSetBlocked } from '@/lib/queries';
 import { usePresence, useTyping } from '@/lib/realtime';
 import { useSession } from '@/lib/session';
 import { emitAck, getSocket } from '@/lib/socket';
@@ -56,6 +57,7 @@ export default function Chat() {
   const typingUser = useTyping((t) => t[id]);
   const [text, setText] = useState('');
   const setBlocked = useSetBlocked();
+  const blocks = useBlocks().data;
   const items: UiMessage[] = msgs.data?.pages.flat() ?? [];
 
   const peer = conv ? peerOf(conv, me) : null;
@@ -118,6 +120,20 @@ export default function Chat() {
   };
 
   const isRoom = conv?.kind === 'room';
+  const iBlocked = !!peer && !isRoom && !!blocks?.some((u) => u.id === peer.id);
+  const block = (blocked: boolean) =>
+    peer &&
+    setBlocked.mutate(
+      { userId: peer.id, blocked },
+      {
+        onSuccess: () => {
+          sheet.current?.dismiss();
+          if (blocked) toast(`${peer.name} is blocked`, { description: "They can't message or call you. Unblock any time." });
+          else toast.success(`${peer.name} is unblocked`);
+        },
+        onError: (e) => toast.error(e.message),
+      },
+    );
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={[s.header, { paddingTop: insets.top + 6 }]}>
@@ -161,18 +177,22 @@ export default function Chat() {
               />
             ) : (
               <>
-                <IconButton
-                  icon={Phone}
-                  label={`Voice call ${peer.name}`}
-                  variant="plain"
-                  onPress={() => calls.start(id, 'audio', peer, conv.listing?.title ?? null)}
-                />
-                <IconButton
-                  icon={Video}
-                  label={`Video call ${peer.name}`}
-                  variant="plain"
-                  onPress={() => calls.start(id, 'video', peer, conv.listing?.title ?? null)}
-                />
+                {iBlocked ? null : (
+                  <>
+                    <IconButton
+                      icon={Phone}
+                      label={`Voice call ${peer.name}`}
+                      variant="plain"
+                      onPress={() => calls.start(id, 'audio', peer, conv.listing?.title ?? null)}
+                    />
+                    <IconButton
+                      icon={Video}
+                      label={`Video call ${peer.name}`}
+                      variant="plain"
+                      onPress={() => calls.start(id, 'video', peer, conv.listing?.title ?? null)}
+                    />
+                  </>
+                )}
                 <IconButton
                   icon={EllipsisVertical}
                   label="More options"
@@ -246,7 +266,7 @@ export default function Chat() {
                   sameDay(items[index + 1]!.createdAt, item.createdAt)
                 }
                 onRetry={() => send(item.body, item)}
-                onCallBack={peer && !isRoom ? (kind) => calls.start(id, kind, peer, conv?.listing?.title ?? null) : undefined}
+                onCallBack={peer && !isRoom && !iBlocked ? (kind) => calls.start(id, kind, peer, conv?.listing?.title ?? null) : undefined}
               />
             </View>
           )}
@@ -260,50 +280,65 @@ export default function Chat() {
           scrollEventThrottle={100}
         />
 
-        <View>
-          {!isRoom && msgs.data && !items.some((m) => m.senderId === me && m.kind === 'text') ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingHorizontal: gutter - 6, paddingBottom: 10, gap: 8 }}
-            >
-              {STARTERS[(conv?.listing ? conv.listing.ownerId === me : myRole !== 'buyer') ? 'owner' : 'asker'].map((t) => (
-                <Pressable
-                  key={t}
-                  onPress={() => send(t)}
-                  style={s.starter}
-                  accessibilityRole="button"
-                  accessibilityLabel={t}
-                  accessibilityHint="Sends this message"
-                >
-                  <Text variant="smallMedium">{t}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          ) : null}
-          <View style={[s.composer, { paddingBottom: insets.bottom + 10 }]}>
-            <TextInput
-              value={text}
-              onChangeText={onType}
-              placeholder="Message"
-              placeholderTextColor={c.muted}
-              style={s.input}
-              multiline
-              maxLength={4000}
-              accessibilityLabel="Message"
+        {iBlocked ? (
+          <View style={[s.blockedBar, { paddingBottom: insets.bottom + 12 }]}>
+            <Text variant="small" color="muted" style={{ textAlign: 'center' }}>
+              You blocked {peer!.name}. They can't message or call you, and you can't reach them here.
+            </Text>
+            <Button
+              title={`Unblock ${peer!.name.split(' ')[0]}`}
+              kind="secondary"
+              size="md"
+              loading={setBlocked.isPending}
+              onPress={() => block(false)}
             />
-            <Pressable
-              onPress={() => send()}
-              disabled={!text.trim()}
-              style={[s.send, !text.trim() && { opacity: 0.35 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Send"
-            >
-              <ArrowUp size={22} color={c.onInk} strokeWidth={2.5} />
-            </Pressable>
           </View>
-        </View>
+        ) : (
+          <View>
+            {!isRoom && msgs.data && !items.some((m) => m.senderId === me && m.kind === 'text') ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingHorizontal: gutter - 6, paddingBottom: 10, gap: 8 }}
+              >
+                {STARTERS[(conv?.listing ? conv.listing.ownerId === me : myRole !== 'buyer') ? 'owner' : 'asker'].map((t) => (
+                  <Pressable
+                    key={t}
+                    onPress={() => send(t)}
+                    style={s.starter}
+                    accessibilityRole="button"
+                    accessibilityLabel={t}
+                    accessibilityHint="Sends this message"
+                  >
+                    <Text variant="smallMedium">{t}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            ) : null}
+            <View style={[s.composer, { paddingBottom: insets.bottom + 10 }]}>
+              <TextInput
+                value={text}
+                onChangeText={onType}
+                placeholder="Message"
+                placeholderTextColor={c.muted}
+                style={s.input}
+                multiline
+                maxLength={4000}
+                accessibilityLabel="Message"
+              />
+              <Pressable
+                onPress={() => send()}
+                disabled={!text.trim()}
+                style={[s.send, !text.trim() && { opacity: 0.35 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Send"
+              >
+                <ArrowUp size={22} color={c.onInk} strokeWidth={2.5} />
+              </Pressable>
+            </View>
+          </View>
+        )}
       </KeyboardAvoidingView>
 
       {peer && !isRoom ? (
@@ -331,19 +366,7 @@ export default function Chat() {
                     title={`Block ${peer.name.split(' ')[0]}`}
                     kind="danger"
                     loading={setBlocked.isPending}
-                    onPress={() =>
-                      setBlocked.mutate(
-                        { userId: peer.id, blocked: true },
-                        {
-                          onSuccess: () => {
-                            sheet.current?.dismiss();
-                            toast(`${peer.name} is blocked`, { description: 'Unblock any time from your profile.' });
-                            router.back();
-                          },
-                          onError: (e) => toast.error(e.message),
-                        },
-                      )
-                    }
+                    onPress={() => block(true)}
                   />
                   <Button title="Cancel" kind="secondary" onPress={() => sheet.current?.dismiss()} />
                 </View>
@@ -376,23 +399,36 @@ export default function Chat() {
                     }}
                   />
                 ) : null}
-                <SheetRow
-                  icon={Phone}
-                  label="Voice call"
-                  onPress={() => {
-                    sheet.current?.dismiss();
-                    calls.start(id, 'audio', peer, conv?.listing?.title ?? null);
-                  }}
-                />
-                <SheetRow
-                  icon={Video}
-                  label="Video call"
-                  onPress={() => {
-                    sheet.current?.dismiss();
-                    calls.start(id, 'video', peer, conv?.listing?.title ?? null);
-                  }}
-                />
-                <SheetRow icon={ShieldBan} label={`Block ${peer.name.split(' ')[0]}`} danger onPress={() => setConfirmBlock(true)} />
+                {iBlocked ? null : (
+                  <>
+                    <SheetRow
+                      icon={Phone}
+                      label="Voice call"
+                      onPress={() => {
+                        sheet.current?.dismiss();
+                        calls.start(id, 'audio', peer, conv?.listing?.title ?? null);
+                      }}
+                    />
+                    <SheetRow
+                      icon={Video}
+                      label="Video call"
+                      onPress={() => {
+                        sheet.current?.dismiss();
+                        calls.start(id, 'video', peer, conv?.listing?.title ?? null);
+                      }}
+                    />
+                  </>
+                )}
+                {iBlocked ? (
+                  <SheetRow
+                    icon={ShieldCheck}
+                    label={`Unblock ${peer.name.split(' ')[0]}`}
+                    hint="They can message and call you again"
+                    onPress={() => block(false)}
+                  />
+                ) : (
+                  <SheetRow icon={ShieldBan} label={`Block ${peer.name.split(' ')[0]}`} danger onPress={() => setConfirmBlock(true)} />
+                )}
               </View>
             )}
           </BottomSheetView>
@@ -627,6 +663,7 @@ const useStyles = makeStyles(({ c }) => ({
     ...type.body,
     color: c.ink,
   },
+  blockedBar: { gap: 10, paddingHorizontal: gutter, paddingTop: 14, borderTopWidth: 1, borderColor: c.line, backgroundColor: c.bg },
   sheetHead: {
     flexDirection: 'row',
     alignItems: 'center',
