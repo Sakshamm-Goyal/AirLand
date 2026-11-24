@@ -4,6 +4,7 @@ import { Vibration } from 'react-native';
 import { toast } from 'sonner-native';
 import { create } from 'zustand';
 import { emitAck, getSocket } from '@/lib/socket';
+import { callService } from '../../../modules/call-service';
 import { resetAudioMode, stopTone } from './tones';
 
 export type CallPhase = 'idle' | 'outgoing' | 'incoming' | 'connecting' | 'active';
@@ -49,6 +50,7 @@ const REASON_TEXT: Record<CallEndReason, string | null> = {
 function reset() {
   Vibration.cancel();
   stopTone();
+  callService.stop();
   if (useCall.getState().phase !== 'idle') resetAudioMode();
   useCall.setState(idle);
 }

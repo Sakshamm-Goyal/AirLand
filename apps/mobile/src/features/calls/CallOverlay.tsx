@@ -33,6 +33,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, RoleBadge, Text } from '@/components/ui';
 import { radius } from '@/theme';
+import { callService } from '../../../modules/call-service';
 import { flipCamera, ROOM_OPTIONS, setSpeaker, Tile, useAudioSession } from './media';
 import { calls, useCall } from './store';
 import { playTone, stopTone } from './tones';
@@ -241,8 +242,21 @@ function CallStage() {
   const local = tracks.find((t) => t.participant.isLocal);
   const remote = tracks.find((t) => !t.participant.isLocal);
   const [back, setBack] = useState(false);
+  // WhatsApp-style: tap the small tile to swap who is full screen.
+  const [swapped, setSwapped] = useState(false);
+  const big = swapped ? local : remote;
+  const small = swapped ? remote : local;
   const now = useNow();
   const elapsed = answeredAt ? Math.floor((now - answeredAt) / 1000) : 0;
+
+  // Keep the call alive when the app is minimised: Android foreground service + "Ongoing call" notification.
+  const connected = connection === ConnectionState.Connected;
+  useEffect(() => {
+    const isVideo = kind === 'video';
+    if (connected)
+      callService.start(`${isVideo ? 'Video' : 'Voice'} call · ${peer?.name ?? 'LandConnect'}`, 'Tap to return to the call', isVideo);
+  }, [connected, kind, peer?.name]);
+  useEffect(() => callService.stop, []);
 
   // The other side vanished without hanging up (crash / dead battery): end after 12 s alone.
   const [aloneSince, setAloneSince] = useState<number | null>(null);
@@ -258,7 +272,9 @@ function CallStage() {
 
   const myQuality = useQuality(localParticipant);
   const theirQuality = useQuality(remotes[0]);
-  const weak = [myQuality, theirQuality].find((q) => q === ConnectionQuality.Poor || q === ConnectionQuality.Lost);
+  const rawWeak = [myQuality, theirQuality].find((q) => q === ConnectionQuality.Poor || q === ConnectionQuality.Lost);
+  // Quality dips for a second or two all the time on mobile data; only warn when it lasts.
+  const weak = useSustained(rawWeak, 4000);
   const weakText = weak
     ? myQuality === weak
       ? 'Your connection is weak'
@@ -277,7 +293,15 @@ function CallStage() {
   const video = kind === 'video';
   return (
     <View style={{ flex: 1 }}>
-      {video && remote ? <Tile trackRef={remote} style={StyleSheet.absoluteFill as never} showName={false} /> : null}
+      {video && big ? (
+        <Tile
+          key={swapped ? 'local' : 'remote'}
+          trackRef={big}
+          mirror={big === local && !back}
+          style={StyleSheet.absoluteFill as never}
+          showName={false}
+        />
+      ) : null}
       {video ? null : (
         <View style={{ flex: 1, justifyContent: 'center' }}>
           {peer ? <PeerHeader peer={peer} listingTitle={null} status={statusLine} /> : null}
@@ -305,9 +329,17 @@ function CallStage() {
         ) : null}
       </LinearGradient>
 
-      {video && local ? (
-        <SelfView screen={{ width, height }} top={insets.top + 80}>
-          {<Tile trackRef={local} mirror={!back} zOrder={1} showName={false} style={{ flex: 1 }} />}
+      {video && small ? (
+        <SelfView screen={{ width, height }} top={insets.top + 80} onTap={() => setSwapped(!swapped)}>
+          {/* key: remount on swap so Android re-creates the surface with the right z-order */}
+          <Tile
+            key={swapped ? 'remote' : 'local'}
+            trackRef={small}
+            mirror={small === local && !back}
+            zOrder={1}
+            showName={false}
+            style={{ flex: 1 }}
+          />
         </SelfView>
       ) : null}
 
@@ -340,6 +372,17 @@ function CallStage() {
       </View>
     </View>
   );
+}
+
+/** `value` once it has held for `ms`; undefined while it is still flickering. */
+function useSustained<T>(value: T | undefined, ms: number) {
+  const [held, setHeld] = useState<T | undefined>(undefined);
+  useEffect(() => {
+    if (value === undefined) return setHeld(undefined);
+    const t = setTimeout(() => setHeld(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return held;
 }
 
 /** LiveKit's per-participant estimate (packet loss, jitter, RTT), updated every few seconds. */
@@ -388,7 +431,17 @@ function Control({
 }
 
 /** Draggable picture-in-picture self view that snaps to the nearest corner. */
-function SelfView({ children, screen, top }: { children: React.ReactNode; screen: { width: number; height: number }; top: number }) {
+function SelfView({
+  children,
+  screen,
+  top,
+  onTap,
+}: {
+  children: React.ReactNode;
+  screen: { width: number; height: number };
+  top: number;
+  onTap: () => void;
+}) {
   const W = 112;
   const H = 164;
   const M = 16;
@@ -407,9 +460,10 @@ function SelfView({ children, screen, top }: { children: React.ReactNode; screen
       x.value = withSpring(x.value + W / 2 < screen.width / 2 ? M : screen.width - W - M);
       y.value = withSpring(y.value + H / 2 < screen.height / 2 ? top : screen.height - H - 170);
     });
+  const tap = Gesture.Tap().runOnJS(true).onEnd(onTap);
   const a = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }, { translateY: y.value }] }));
   return (
-    <GestureDetector gesture={pan}>
+    <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
       <Animated.View
         style={[
           {

@@ -26,6 +26,7 @@ import { useCreateListing, useUpdateListing } from '@/lib/queries';
 import { useSession } from '@/lib/session';
 import { pickPhotos, uploadPhoto } from '@/lib/upload';
 import { makeStyles, radius, useTheme } from '@/theme';
+import { LocationPicker } from './LocationPicker';
 
 type Photo = { local: string; url?: string; state: 'uploading' | 'done' | 'failed' };
 const DOCS = ['RTC / Pahani', '7/12 extract', 'Khata', 'EC', 'Mutation', 'DC Conversion', 'Patta'];
@@ -47,6 +48,7 @@ export function ListingForm({ initial }: { initial?: Listing }) {
   // Only reverse-geocode after the user moves the map; the initial region must not overwrite saved place names.
   const moved = useRef(false);
   const map = useRef<MapView>(null);
+  const [picking, setPicking] = useState(false);
   const startRegion: Region = initial
     ? { latitude: initial.lat, longitude: initial.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }
     : START;
@@ -134,12 +136,18 @@ export function ListingForm({ initial }: { initial?: Listing }) {
     const { granted } = await Location.requestForegroundPermissionsAsync();
     if (!granted) return toast('Location permission is off');
     const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-    moved.current = true;
-    map.current?.animateToRegion(
-      { latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
-      500,
-    );
+    pick({ latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 });
   };
+
+  const pick = (r: Region) => {
+    setPicking(false);
+    setValue('lat', r.latitude);
+    setValue('lng', r.longitude);
+    map.current?.animateToRegion(r, 400);
+    void reverseGeocode(r.latitude, r.longitude);
+  };
+  const lat = watch('lat');
+  const lng = watch('lng');
 
   const uploading = photos.some((p) => p.state === 'uploading');
   const submit = () =>
@@ -280,36 +288,47 @@ export function ListingForm({ initial }: { initial?: Listing }) {
       />
 
       <Section title="Location" error={err.locality?.message}>
-        <View style={s.mapBox}>
+        {/* A still preview: scrolling the form must never pan the map. Tap opens the full-screen picker. */}
+        <Pressable
+          style={s.mapBox}
+          onPress={() => setPicking(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Set the plot's location on a map"
+        >
           <MapView
             ref={map}
             style={StyleSheet.absoluteFill}
             initialRegion={startRegion}
-            onPanDrag={() => {
-              moved.current = true;
-            }}
-            onRegionChangeComplete={(r) => {
-              setValue('lat', r.latitude);
-              setValue('lng', r.longitude);
-              if (moved.current) void reverseGeocode(r.latitude, r.longitude);
-            }}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            rotateEnabled={false}
+            pitchEnabled={false}
             toolbarEnabled={false}
+            pointerEvents="none"
           />
           <View pointerEvents="none" style={s.centerPin}>
             <MapPin size={36} color={c.danger} fill={c.surface} />
           </View>
-          <IconButton
-            icon={LocateFixed}
-            label="Use my location"
-            variant="surface"
-            style={{ position: 'absolute', right: 10, bottom: 10 }}
-            onPress={goToMyLocation}
-          />
+          <View pointerEvents="none" style={s.mapCta}>
+            <Text variant="smallMedium">{moved.current || initial ? 'Adjust pin' : 'Set location'}</Text>
+          </View>
           {geocoding ? <ActivityIndicator style={{ position: 'absolute', left: 12, bottom: 18 }} color={c.ink} /> : null}
+        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text variant="small" color="muted" style={{ flex: 1 }}>
+            Tap the map to place the pin on your land.
+          </Text>
+          <Button title="Use my location" icon={LocateFixed} kind="ghost" size="md" onPress={() => void goToMyLocation()} />
         </View>
-        <Text variant="small" color="muted">
-          Drag the map so the pin sits on your land.
-        </Text>
+        <LocationPicker
+          visible={picking}
+          region={{ latitude: lat, longitude: lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
+          onClose={() => setPicking(false)}
+          onPick={(r) => {
+            moved.current = true;
+            pick(r);
+          }}
+        />
         <Controller
           control={control}
           name="locality"
@@ -477,6 +496,17 @@ const useStyles = makeStyles(({ c }) => ({
     justifyContent: 'center',
   },
   mapBox: { height: 220, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: c.surfaceAlt },
+  mapCta: {
+    position: 'absolute',
+    left: 12,
+    top: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radius.full,
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.line,
+  },
   centerPin: { position: 'absolute', left: '50%', top: '50%', marginLeft: -18, marginTop: -34 },
   switchRow: {
     flexDirection: 'row',
