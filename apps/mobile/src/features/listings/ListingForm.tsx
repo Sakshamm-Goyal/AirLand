@@ -133,6 +133,12 @@ export function ListingForm({ initial }: { initial?: Listing }) {
   const reverseGeocode = async (lat: number, lng: number) => {
     setGeocoding(true);
     try {
+      // Android's geocoder only answers with location permission; without it this failed silently and the
+      // village/district/state stayed empty after a pin was placed. Ask once, here, when it's clearly useful.
+      if (!(await Location.getForegroundPermissionsAsync()).granted) {
+        const { granted } = await Location.requestForegroundPermissionsAsync();
+        if (!granted) return toast('Type the village or locality', { description: 'Location permission fills it in for you.' });
+      }
       const [g] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
       if (g) {
         setValue('locality', g.district || g.subregion || g.city || g.name || '', { shouldValidate: formState.isSubmitted });
