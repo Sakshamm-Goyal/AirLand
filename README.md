@@ -4,7 +4,7 @@ Land marketplace for **buyers, sellers and brokers**: browse plots, list land wi
 
 > Land deals in India already happen over WhatsApp calls. LandConnect keeps that familiar flow but ties every chat and call to a listing and keeps numbers private.
 
-**Demo:** [Android APK](https://expo.dev/artifacts/eas/rZKuiBP8F9Qk6g1sUZVRsMgzsTS3CTz4LUR5RIDRRKk.apk) · Video `<add link>` · [Hosted API health](https://api.213-136-67-77.sslip.io/health)
+**Demo:** [Android APK](https://expo.dev/artifacts/eas/koK3Cx2tLHbQNpUgiaefDeNk-KrkeCICPmGqzQnpeSo.apk) · Video `<add link>` · [Hosted API health](https://api.213-136-67-77.sslip.io/health)
 
 Demo accounts: `buyer@demo.test`, `seller@demo.test`, `broker@demo.test`, password `landconnect123`.
 

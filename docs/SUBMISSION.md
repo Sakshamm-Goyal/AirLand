@@ -40,7 +40,7 @@ Hello Team LandConnect,
 Please find my submission for the LandConnect assignment below.
 
 GitHub repository: https://github.com/Sakshamm-Goyal/AirLand
-Android APK: https://expo.dev/artifacts/eas/rZKuiBP8F9Qk6g1sUZVRsMgzsTS3CTz4LUR5RIDRRKk.apk  (hosted API: https://api.213-136-67-77.sslip.io/health)
+Android APK: https://expo.dev/artifacts/eas/koK3Cx2tLHbQNpUgiaefDeNk-KrkeCICPmGqzQnpeSo.apk  (hosted API: https://api.213-136-67-77.sslip.io/health)
 Demo video: <link>
 Technical documentation: https://github.com/Sakshamm-Goyal/AirLand/blob/main/docs/TECHNICAL.md
 AI tools usage summary: https://github.com/Sakshamm-Goyal/AirLand/blob/main/docs/AI_USAGE.md
