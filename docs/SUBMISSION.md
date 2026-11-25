@@ -1,7 +1,7 @@
 # LandConnect: submission kit
 
 ## 1. Repo README
-Done: [README.md](../README.md) has the features, stack, hosting, run/deploy steps, tests and the demo links. Add the video link to its **Demo** line once it's uploaded.
+Done: [README.md](../README.md) has the features, stack, hosting, run/deploy steps, tests and the demo links. The video link is on its **Demo** line.
 
 ## 2. Technical documentation
 Done: [TECHNICAL.md](TECHNICAL.md) covers technologies, architecture, hard limits, call quality, development approach, the real challenges (R8 crash, Android photo upload, 4 s ring from DB region, India ↔ France congestion, ringing that wouldn't stop, socket crash) and limitations. It links [ARCHITECTURE.md](ARCHITECTURE.md) and [DECISIONS.md](DECISIONS.md).
@@ -41,7 +41,7 @@ Please find my submission for the LandConnect assignment below.
 
 GitHub repository: https://github.com/Sakshamm-Goyal/AirLand
 Android APK: https://expo.dev/artifacts/eas/koK3Cx2tLHbQNpUgiaefDeNk-KrkeCICPmGqzQnpeSo.apk  (hosted API: https://api.213-136-67-77.sslip.io/health)
-Demo video: <link>
+Demo video: https://youtu.be/-a1yCdTrvvo
 Technical documentation: https://github.com/Sakshamm-Goyal/AirLand/blob/main/docs/TECHNICAL.md
 AI tools usage summary: https://github.com/Sakshamm-Goyal/AirLand/blob/main/docs/AI_USAGE.md
 
@@ -83,5 +83,5 @@ Regards,
 - [x] Docs linked from README (TECHNICAL, AI_USAGE, ARCHITECTURE, DECISIONS)
 - [ ] Latest APK installed on two phones: photo upload, call accept / decline / missed, voice + video, group meeting
 - [ ] AI_USAGE.md: fill in other tools and the parts I reworked myself
-- [ ] Video recorded, unlisted, playable in incognito, under 5 min; link added to README and the email
+- [x] Video recorded (3:44, unlisted on YouTube), link added to README and the email
 - [ ] Email sent with all links; copy saved
