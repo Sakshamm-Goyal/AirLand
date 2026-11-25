@@ -1,3 +1,4 @@
+import { File } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
@@ -33,7 +34,9 @@ export async function uploadPhoto(uri: string): Promise<string> {
     // Browsers need a real Blob; the {uri,name,type} shape is React Native's FormData extension.
     form.append('file', await (await fetch(file)).blob(), 'photo.jpg');
   } else {
-    form.append('file', { uri: file, name: 'photo.jpg', type: 'image/jpeg' } as unknown as Blob);
+    // SDK 58 swaps global fetch for expo/fetch, which can't read React Native's { uri, name, type } parts
+    // (it threw before sending: "Can't reach LandConnect"). A file-system File is a Blob it can read.
+    form.append('file', new File(file) as unknown as Blob, 'photo.jpg');
   }
   try {
     const { url } = await api.upload<{ url: string }>('/uploads', form);

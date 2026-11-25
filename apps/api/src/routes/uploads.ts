@@ -6,7 +6,6 @@ import { config } from '../config.ts';
 import { db, schema } from '../db/client.ts';
 import { HttpError, notFound } from '../errors.ts';
 
-const MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
 const DAILY_LIMIT = 100; // 10 photos × 10 listings a day; photos live in Postgres, so this also caps storage growth
 
 /** What the bytes actually are. The client's Content-Type is just a claim. */
@@ -28,10 +27,10 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
     if ((today?.n ?? 0) >= DAILY_LIMIT) throw new HttpError(429, `You can upload up to ${DAILY_LIMIT} photos a day. Try again tomorrow.`);
     const file = await req.file({ limits: { fileSize: 4 * 1024 * 1024, files: 1 } });
     if (!file) throw new HttpError(400, 'No file');
-    if (!MIME.has(file.mimetype)) throw new HttpError(415, 'Only JPEG, PNG, WebP or HEIC photos');
     const bytes = await file.toBuffer(); // throws 413 past the limit
     const mime = sniff(bytes);
-    if (!mime) throw new HttpError(415, "That file isn't a photo");
+    // The bytes decide, not the client's Content-Type (phones label parts inconsistently, and it's only a claim).
+    if (!mime) throw new HttpError(415, 'Only JPEG, PNG, WebP or HEIC photos');
     const [row] = await db.insert(schema.uploads).values({ ownerId: req.user.id, mime, bytes }).returning({ id: schema.uploads.id });
     reply.code(201);
     return { url: `${config.PUBLIC_URL}/uploads/${row!.id}` };
