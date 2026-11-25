@@ -1,11 +1,10 @@
 # AI tools usage
 
-> Two items are still marked `<…>` for me to fill in: other tools used, and the parts I wrote or reworked myself.
-
 | Tool | Used for |
 |---|---|
 | Claude (Claude Code) | Research (competitor apps, calling SDK comparison), planning, architecture and schema design, the clickable HTML prototype, most of the implementation of the API, shared contract and mobile app, tests, deployment (VM, Neon, LiveKit Cloud), on-device debugging over `adb`, docs |
-| `<other tools you used, e.g. Copilot, ChatGPT>` | `<what for>` |
+| ChatGPT | Researching similar land and property apps and sites (what they show, how they handle contact privacy), and UI inspiration |
+| Dribbble, Behance (design references, not AI) | Visual inspiration for the listing cards, map, chat and call screens |
 
 ## How AI was used
 
@@ -42,7 +41,11 @@
 
 ## Parts I wrote or reworked myself
 
-`<e.g. tuning call audio routing after testing on two phones, …>`
+- **Call audio routing.** Tested voice and video calls on two physical phones and reworked the routing: earpiece for voice, loudspeaker for video, a speaker toggle while ringing that carries into the call, and ringback/ringtone that stop the moment a call is answered or cancelled.
+- **Cross-region latency.** Diagnosed a call that took ~4 s to ring (the API in France, the database in Singapore, ~165 ms per query) and resolved it by moving the database to the API's region: about 7 ms per query and ~0.3 s to ring.
+- **Calling and video conferencing on LiveKit Cloud.** After measuring congestion on the self-hosted India ↔ France media path, moved 1:1 calls and group meetings to LiveKit Cloud's nearest edge (connect time ~77 ms vs ~190 ms) and tuned the weak-connection warning so brief dips don't flash it.
+- **Optimisation and polish from device testing.** Keyboard and auto-scroll in chat, map pins, pull-to-refresh, photo upload on Android, calls staying alive when the app is minimised, and the WhatsApp-style meeting grid.
+- **The demo video:** recorded the calls on the phones and chose the scenes, order and timing.
 
 ## What I can explain without AI
 
